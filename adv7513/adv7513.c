@@ -156,7 +156,7 @@ void adv7513_set_audio(adv7513_dev *dev, adv7513_audio_fmt_t fmt, adv7513_i2s_fs
                 cc_val = 0x5;
                 break;
             case ADV_4CH_STEREO_7p1:
-                ca_val = 0x1f;
+                ca_val = 0x13;
                 cc_val = 0x7;
                 break;
             default:
