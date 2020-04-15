@@ -19,7 +19,6 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "sysconfig.h"
 #include "si5351.h"
 #include "i2c_opencores.h"
 
@@ -272,7 +271,7 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
 
     if (mult == 1) {
         si5351_configure_clk(dev, pll_ch, out_ch, clksrc, 1);
-        si5351_configure_pll(dev, pll_ch, SI_XTAL, 0);
+        si5351_configure_pll(dev, pll_ch, clksrc, 0);
         printf("Si5351 Clock source bypass\n\n");
     } else {
         clkin_div = (clksrc_hz / SI_CLKIN_MAX_FREQ) + 1;
