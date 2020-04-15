@@ -24,7 +24,38 @@
 #include <stdint.h>
 #include "sysconfig.h"
 #include "adv7513_regs.h"
-#include "video_modes.h"
+
+typedef enum tagHDMI_Video_Type {
+    HDMI_Unknown = 0 ,
+    HDMI_640x480p60 = 1 ,
+    HDMI_480p60,
+    HDMI_480p60_16x9,
+    HDMI_720p60,
+    HDMI_1080i60,
+    HDMI_480i60_PR2x,
+    HDMI_480i60_PR2x_16x9,
+    HDMI_240p60_PR2x,
+    HDMI_240p60_PR4x = 12,
+    HDMI_1080p60 = 16,
+    HDMI_576p50,
+    HDMI_576p50_16x9,
+    HDMI_720p50 = 19,
+    HDMI_1080i50,
+    HDMI_576i50,
+    HDMI_576i50_16x9,
+    HDMI_288p50,
+    HDMI_1080p50 = 31,
+    /*HDMI_1080p24,
+    HDMI_1080p25,
+    HDMI_1080p30,
+    HDMI_1080i120 = 46,*/
+} HDMI_Video_Type ;
+
+typedef enum {
+    TX_1X   = 0,
+    TX_2X   = 1,
+    TX_4X   = 2
+} HDMI_pixelrep_t;
 
 typedef enum {
     TX_HDMI_RGB_FULL = 0,
