@@ -26,7 +26,7 @@
 #include "video_modes.h"
 #include "isl51002_regs.h"
 
-//#define ISL_MEAS_HZ
+//#define ISL_SYNC_MEAS
 
 typedef struct {
     uint16_t r_gain;
