@@ -40,6 +40,7 @@ typedef struct {
 } adv7611_sync_status;
 
 typedef struct {
+    uint32_t i2cm_base;
     uint8_t io_base;
     uint8_t cec_base;
     uint8_t infoframe_base;
@@ -56,6 +57,17 @@ typedef struct {
     uint32_t pclk_hz;
     uint32_t pixelrep;
 } adv7611_dev;
+
+typedef enum {
+    ADV7611_IO_MAP = 0,
+    ADV7611_DPLL_MAP,
+    ADV7611_HDMI_MAP,
+    ADV7611_KSV_MAP,
+    ADV7611_INFOFRAME_MAP,
+    ADV7611_CP_MAP,
+    ADV7611_CEC_MAP,
+    ADV7611_EDID_MAP,
+} adv7611_reg_map;
 
 void adv7611_init(adv7611_dev *dev);
 
