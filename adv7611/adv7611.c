@@ -180,9 +180,9 @@ int adv7611_get_sync_stats(adv7611_dev *dev) {
         ss.v_active = (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x09) & 0x1f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0a));
     } else {
         ss.v_total = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x26) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x27)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x28) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x29)))/2;
-        ss.v_synclen = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x2e) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x2f)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x30) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x31)))/2;
-        ss.v_backporch = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x32) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x33)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x34) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x35)))/2;
-        ss.v_active = (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x09) & 0x1f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0a)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0b) & 0x1f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0c));
+        ss.v_synclen = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x2e) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x2f)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x30) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x31)))/4;
+        ss.v_backporch = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x32) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x33)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x34) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x35)))/4;
+        ss.v_active = ((((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x09) & 0x1f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0a)) + (((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0b) & 0x1f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0c)))/2;
     }
 
     ss.h_total = ((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x1e) & 0x3f) << 8) | adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x1f);
