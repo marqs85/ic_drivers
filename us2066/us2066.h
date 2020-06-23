@@ -33,6 +33,8 @@ typedef struct {
 
 void us2066_init(us2066_dev *dev);
 
+void us2066_display_on(us2066_dev *dev);
+
 void us2066_write(us2066_dev *dev, char *row1, char *row2);
 
 #endif /* US2066_H_ */

@@ -71,6 +71,8 @@ typedef enum {
 
 void adv7611_init(adv7611_dev *dev);
 
+void adv7611_enable_power(adv7611_dev *dev, int enable);
+
 int adv7611_check_activity(adv7611_dev *dev);
 
 int adv7611_get_sync_stats(adv7611_dev *dev);

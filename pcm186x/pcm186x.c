@@ -123,9 +123,15 @@ int pcm186x_init(pcm186x_dev *dev)
     // Use IIR filter
     pcm186x_writereg(dev, PCM186X_DSP_CTRL, 0x30);
 
+    pcm186x_enable_power(dev, 0);
+
     memcpy(&dev->cfg, &pcm_cfg_default, sizeof(pcm186x_config));
 
     return 0;
+}
+
+void pcm186x_enable_power(pcm186x_dev *dev, int enable) {
+    pcm186x_writereg(dev, PCM186X_PWR_CTRL, enable ? 0x70 : 0x75);
 }
 
 void pcm186x_get_default_cfg(pcm186x_config *cfg) {

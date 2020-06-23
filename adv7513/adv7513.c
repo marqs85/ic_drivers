@@ -46,23 +46,8 @@ uint8_t adv7513_readreg(adv7513_dev *dev, uint8_t regaddr)
     return I2C_read(dev->i2cm_base,1);
 }
 
-void adv7513_init(adv7513_dev *dev, uint8_t load_default_cfg) {
-    if (load_default_cfg)
-        memcpy(&dev->cfg, &adv7513_cfg_default, sizeof(adv7513_config));
-
-    //Set IO mapping
-    adv7513_writereg(dev, 0x43, dev->edid_base);
-    adv7513_writereg(dev, 0x45, dev->pktmem_base);
-    adv7513_writereg(dev, 0xE1, dev->cec_base);
-
-    // Return if no display is detected
-    if ((adv7513_readreg(dev, 0x42) & 0x60) != 0x60)
-        return;
-
-    // Power up TX
-    adv7513_writereg(dev, 0x41, 0x10);
-    //adv7513_writereg(0xd6, 0xc0);
-    dev->powered_on = 1;
+void adv7513_init(adv7513_dev *dev) {
+    memcpy(&dev->cfg, &adv7513_cfg_default, sizeof(adv7513_config));
 
     // Setup fixed registers
     adv7513_writereg(dev, 0x98, 0x03);
@@ -74,35 +59,61 @@ void adv7513_init(adv7513_dev *dev, uint8_t load_default_cfg) {
     adv7513_writereg(dev, 0xE0, 0xD0);
     adv7513_writereg(dev, 0xF9, 0x00);
 
-    // Setup audio format
-    adv7513_writereg(dev, 0x12, 0x20); // disable copyright protection
-    adv7513_writereg(dev, 0x13, 0x20); // set category code
-    adv7513_writereg(dev, 0x14, 0x0B); // 24-bit audio
-    adv7513_writereg(dev, 0x15, 0x20); // 24-bit RGB/YCbCr
+    adv7513_enable_power(dev, 0);
+}
 
-    // Input video format
-    adv7513_writereg(dev, 0x16, 0x30); // RGB 8bpc
-    adv7513_writereg(dev, 0x17, 0x02); // 16:9 aspect
+void adv7513_enable_power(adv7513_dev *dev, int enable) {
+    //Set IO mapping
+    adv7513_writereg(dev, 0x43, dev->edid_base);
+    adv7513_writereg(dev, 0x45, dev->pktmem_base);
+    adv7513_writereg(dev, 0xE1, dev->cec_base);
 
-    // HDMI/DVI output selection
-    adv7513_set_tx_mode(dev, dev->cfg.tx_mode);
+    // Init registers which may have been reset upon entering powerdown
+    if (enable) {
+        // Return if no display is detected
+        if ((adv7513_readreg(dev, 0x42) & 0x60) != 0x60)
+            return;
 
-    // No clock delay (?)
-    adv7513_writereg(dev, 0xBA, 0x60);
+        // Power up TX
+        adv7513_writereg(dev, 0x41, 0x10);
+        //adv7513_writereg(0xd6, 0xc0);
+        dev->powered_on = 1;
 
-    // I2S0 input for I2S audio
-    adv7513_writereg(dev, 0x0C, 0x04);
+        // Setup audio format
+        adv7513_writereg(dev, 0x12, 0x20); // disable copyright protection
+        adv7513_writereg(dev, 0x13, 0x20); // set category code
+        adv7513_writereg(dev, 0x14, 0x0B); // 24-bit audio
+        adv7513_writereg(dev, 0x15, 0x20); // 24-bit RGB/YCbCr
 
-    // Quad stereo
-    adv7513_writereg(dev, 0x10, 0x01);
+        // Input video format
+        adv7513_writereg(dev, 0x16, 0x30); // RGB 8bpc
+        adv7513_writereg(dev, 0x17, 0x02); // 16:9 aspect
 
-    adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_chcfg);
+        // HDMI/DVI output selection
+        adv7513_set_tx_mode(dev, dev->cfg.tx_mode);
 
-    // Setup manual pixel repetition
-    adv7513_writereg(dev, 0x3B, (0xC0 | (dev->pixelrep << 3) | (dev->pixelrep_infoframe << 1)));
+        // No clock delay, adjust setup&hold constraints accordingly
+        // https://ez.analog.com/video/f/q-a/10535/adv7513-input-video-data-timings
+        adv7513_writereg(dev, 0xBA, 0x60);
 
-    // Set VIC
-    adv7513_writereg(dev, 0x3C, dev->vic);
+        // I2S0 input for I2S audio
+        adv7513_writereg(dev, 0x0C, 0x04);
+
+        // Quad stereo
+        adv7513_writereg(dev, 0x10, 0x01);
+
+        adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_chcfg);
+
+        // Setup manual pixel repetition
+        adv7513_writereg(dev, 0x3B, (0xC0 | (dev->pixelrep << 3) | (dev->pixelrep_infoframe << 1)));
+
+        // Set VIC
+        adv7513_writereg(dev, 0x3C, dev->vic);
+    } else {
+        // Power down TX
+        adv7513_writereg(dev, 0x41, 0x50);
+        dev->powered_on = 0;
+    }
 }
 
 void adv7513_get_default_cfg(adv7513_config *cfg) {
@@ -238,7 +249,7 @@ int adv7513_check_hpd_power(adv7513_dev *dev) {
             activity_change = 1;
 
             printf("Power-on ADV7513\n\n");
-            adv7513_init(dev, 0);
+            adv7513_enable_power(dev, 1);
         }
     } else {
         dev->powered_on = 0;

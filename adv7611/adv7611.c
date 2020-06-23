@@ -84,8 +84,8 @@ void adv7611_init(adv7611_dev *dev) {
     //adv7611_writereg(dev, dev->cp_base, 0x6c, 00);
     //adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x9b, 03);
 
-    // power up
-    adv7611_writereg(dev, ADV7611_IO_MAP, 0x0c, 0x00);
+    // power down
+    adv7611_enable_power(dev, 0);
 
     // activate pads
     adv7611_writereg(dev, ADV7611_IO_MAP, 0x15, 0x00);
@@ -116,6 +116,10 @@ void adv7611_init(adv7611_dev *dev) {
 
     // enable TMDS termination
     adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x83, 0x00);
+}
+
+void adv7611_enable_power(adv7611_dev *dev, int enable) {
+    adv7611_writereg(dev, ADV7611_IO_MAP, 0x0c, (!enable)<<5);
 }
 
 int adv7611_check_activity(adv7611_dev *dev) {

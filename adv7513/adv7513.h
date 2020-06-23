@@ -109,7 +109,9 @@ typedef struct {
     adv7513_config cfg;
 } adv7513_dev;
 
-void adv7513_init(adv7513_dev *dev, uint8_t load_default_cfg);
+void adv7513_init(adv7513_dev *dev);
+
+void adv7513_enable_power(adv7513_dev *dev, int enable);
 
 void adv7513_get_default_cfg(adv7513_config *cfg);
 

@@ -78,6 +78,10 @@ void us2066_init(us2066_dev *dev)
     us2066_cmd(dev, 0x28, WRDELAY);      // function set (fundamental command set)
     us2066_cmd(dev, 0x01, CLEARDELAY);   // clear display
     us2066_cmd(dev, 0x80, WRDELAY);      // set DDRAM address to 0x00
+}
+
+void us2066_display_on(us2066_dev *dev)
+{
     us2066_cmd(dev, 0x0C, WRDELAY);      // display ON
 }
 

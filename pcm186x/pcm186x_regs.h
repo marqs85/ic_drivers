@@ -59,6 +59,7 @@
 #define PCM186X_PLL_D_LSB       0x2C
 #define PCM186X_PLL_D_MSB       0x2D
 
+#define PCM186X_PWR_CTRL        0x70
 #define PCM186X_DSP_CTRL        0x71
 
 #endif /* PCM186X_REGS_H_ */

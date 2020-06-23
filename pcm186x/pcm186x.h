@@ -61,6 +61,8 @@ void pcm186x_set_samplerate(pcm186x_dev *dev, pcm_samplerate_t fs);
 
 int pcm186x_init(pcm186x_dev *dev);
 
+void pcm186x_enable_power(pcm186x_dev *dev, int enable);
+
 void pcm186x_get_default_cfg(pcm186x_config *cfg);
 
 void pcm186x_update_config(pcm186x_dev *dev, pcm186x_config *cfg);
