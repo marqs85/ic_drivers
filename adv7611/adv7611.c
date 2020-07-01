@@ -25,6 +25,10 @@
 
 #define PCLK_HZ_TOLERANCE 1000000UL
 
+const adv7611_config adv7611_cfg_default = {
+    .default_rgb_range = ADV7611_RGB_LIMITED
+};
+
 uint8_t adv7611_get_baseaddr(adv7611_dev *dev, adv7611_reg_map map) {
     switch (map) {
         case ADV7611_DPLL_MAP:
@@ -71,6 +75,8 @@ uint8_t adv7611_readreg(adv7611_dev *dev, adv7611_reg_map map, uint8_t regaddr)
 void adv7611_init(adv7611_dev *dev) {
     int i;
 
+    memcpy(&dev->cfg, &adv7611_cfg_default, sizeof(adv7611_config));
+
     // Set I2C mapping
     adv7611_writereg(dev, ADV7611_IO_MAP, 0xf4, dev->cec_base);
     adv7611_writereg(dev, ADV7611_IO_MAP, 0xf5, dev->infoframe_base);
@@ -80,9 +86,16 @@ void adv7611_init(adv7611_dev *dev) {
     adv7611_writereg(dev, ADV7611_IO_MAP, 0xfb, dev->hdmi_base);
     adv7611_writereg(dev, ADV7611_IO_MAP, 0xfd, dev->cp_base);
 
-    // ???
-    //adv7611_writereg(dev, dev->cp_base, 0x6c, 00);
-    //adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x9b, 03);
+    // ADI recommendations
+    adv7611_writereg(dev, ADV7611_CP_MAP, 0x6c, 0x00);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x9b, 0x03);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x6f, 0x08);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x85, 0x1f);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x87, 0x70);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x57, 0xda);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x58, 0x01);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x03, 0x98);
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x4c, 0x44);
 
     // power down
     adv7611_enable_power(dev, 0);
@@ -116,10 +129,26 @@ void adv7611_init(adv7611_dev *dev) {
 
     // enable TMDS termination
     adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x83, 0x00);
+
+    // set default RGB range
+    adv7611_set_default_rgb_range(dev, dev->cfg.default_rgb_range);
 }
 
 void adv7611_enable_power(adv7611_dev *dev, int enable) {
     adv7611_writereg(dev, ADV7611_IO_MAP, 0x0c, (!enable)<<5);
+}
+
+void adv7611_set_default_rgb_range(adv7611_dev *dev, adv7611_rgb_range rng) {
+    adv7611_writereg(dev, ADV7611_HDMI_MAP, 0x47, ((1<<2)|(rng<<1)));
+}
+
+void adv7611_set_input_cs(adv7611_dev *dev) {
+    uint8_t regval, cs;
+
+    regval = adv7611_readreg(dev, ADV7611_IO_MAP, 0x02);
+    cs = dev->hdmi_mode ? 0xf : 0x1;
+
+    adv7611_writereg(dev, ADV7611_IO_MAP, 0x02, ((cs<<4)|(regval & 0xf)));
 }
 
 int adv7611_check_activity(adv7611_dev *dev) {
@@ -172,7 +201,7 @@ int adv7611_get_sync_stats(adv7611_dev *dev) {
     int mode_changed = 0;
     adv7611_sync_status ss = {0};
     uint32_t pclk_hz;
-    uint8_t pixelrep;
+    uint8_t pixelrep, hdmi_mode;
     uint8_t regval;
 
     ss.interlace_flag = !!(adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x0b) & (1<<5));
@@ -198,6 +227,7 @@ int adv7611_get_sync_stats(adv7611_dev *dev) {
     ss.h_polarity = !!(regval & (1<<5));
     ss.v_polarity = !!(regval & (1<<4));
     pixelrep = regval & 0xf;
+    hdmi_mode = regval >> 7;
 
     regval = adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x52);
     pclk_hz = ((adv7611_readreg(dev, ADV7611_HDMI_MAP, 0x51) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128);
@@ -205,7 +235,8 @@ int adv7611_get_sync_stats(adv7611_dev *dev) {
     if (memcmp(&ss, &dev->ss, sizeof(adv7611_sync_status)) ||
         (pclk_hz < (dev->pclk_hz - PCLK_HZ_TOLERANCE)) ||
         (pclk_hz > (dev->pclk_hz + PCLK_HZ_TOLERANCE)) ||
-        (pixelrep != dev->pixelrep))
+        (pixelrep != dev->pixelrep) ||
+        (hdmi_mode != dev->hdmi_mode))
     {
         mode_changed = 1;
 
@@ -221,11 +252,20 @@ int adv7611_get_sync_stats(adv7611_dev *dev) {
         printf("advrx interlace_flag: %u\n", ss.interlace_flag);
         printf("advrx pclk: %luHz\n", pclk_hz);
         printf("advrx pixelrep: %u\n", pixelrep);
+        printf("advrx hdmi_mode: %u\n", hdmi_mode);
     }
 
     memcpy(&dev->ss, &ss, sizeof(adv7611_sync_status));
     dev->pclk_hz = pclk_hz;
     dev->pixelrep = pixelrep;
+    dev->hdmi_mode = hdmi_mode;
 
     return mode_changed;
+}
+
+void adv7611_update_config(adv7611_dev *dev, adv7611_config *cfg) {
+    if (cfg->default_rgb_range != dev->cfg.default_rgb_range)
+        adv7611_set_default_rgb_range(dev, cfg->default_rgb_range);
+
+    memcpy(&dev->cfg, cfg, sizeof(adv7611_config));
 }

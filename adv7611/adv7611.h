@@ -25,6 +25,22 @@
 #include "sysconfig.h"
 #include "adv7611_regs.h"
 
+typedef enum {
+    ADV7611_IO_MAP = 0,
+    ADV7611_DPLL_MAP,
+    ADV7611_HDMI_MAP,
+    ADV7611_KSV_MAP,
+    ADV7611_INFOFRAME_MAP,
+    ADV7611_CP_MAP,
+    ADV7611_CEC_MAP,
+    ADV7611_EDID_MAP,
+} adv7611_reg_map;
+
+typedef enum {
+    ADV7611_RGB_LIMITED = 0,
+    ADV7611_RGB_FULL,
+} adv7611_rgb_range;
+
 typedef struct {
     uint16_t h_active;
     uint16_t v_active;
@@ -38,6 +54,10 @@ typedef struct {
     uint8_t h_polarity;
     uint8_t v_polarity;
 } adv7611_sync_status;
+
+typedef struct {
+    adv7611_rgb_range default_rgb_range;
+} adv7611_config;
 
 typedef struct {
     uint32_t i2cm_base;
@@ -56,25 +76,22 @@ typedef struct {
     adv7611_sync_status ss;
     uint32_t pclk_hz;
     uint32_t pixelrep;
+    uint8_t hdmi_mode;
+    adv7611_config cfg;
 } adv7611_dev;
-
-typedef enum {
-    ADV7611_IO_MAP = 0,
-    ADV7611_DPLL_MAP,
-    ADV7611_HDMI_MAP,
-    ADV7611_KSV_MAP,
-    ADV7611_INFOFRAME_MAP,
-    ADV7611_CP_MAP,
-    ADV7611_CEC_MAP,
-    ADV7611_EDID_MAP,
-} adv7611_reg_map;
 
 void adv7611_init(adv7611_dev *dev);
 
 void adv7611_enable_power(adv7611_dev *dev, int enable);
 
+void adv7611_set_default_rgb_range(adv7611_dev *dev, adv7611_rgb_range rng);
+
+void adv7611_set_input_cs(adv7611_dev *dev);
+
 int adv7611_check_activity(adv7611_dev *dev);
 
 int adv7611_get_sync_stats(adv7611_dev *dev);
+
+void adv7611_update_config(adv7611_dev *dev, adv7611_config *cfg);
 
 #endif /* ADV7611_H_ */
