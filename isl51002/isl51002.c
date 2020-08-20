@@ -166,6 +166,8 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
     else
         isl_writereg(dev, ISL_MEASCFG, 0x02);*/
 
+    dev->sm.h_synclen_x16 = (isl_readreg(dev, ISL_HSYNCWIDTH_MSB) << 8) | isl_readreg(dev, ISL_HSYNCWIDTH_LSB);
+
 #ifdef ISL_SYNC_MEAS
     h_period_x16 = (isl_readreg(dev, ISL_HSYNCPERIOD_MSB) << 8) | isl_readreg(dev, ISL_HSYNCPERIOD_LSB);
     if (h_period_x16 == 0) {
@@ -178,7 +180,7 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
 
     dev->sm.h_period_x16 = h_period_x16;
     dev->sm.v_totlines = ((isl_readreg(dev, ISL_VSYNCPERIOD_MSB) & 0x0f) << 8) | isl_readreg(dev, ISL_VSYNCPERIOD_LSB);
-    dev->sm.h_synclen_x16 = (isl_readreg(dev, ISL_HSYNCWIDTH_MSB) << 8) | isl_readreg(dev, ISL_HSYNCWIDTH_LSB);
+    //dev->sm.h_synclen_x16 = (isl_readreg(dev, ISL_HSYNCWIDTH_MSB) << 8) | isl_readreg(dev, ISL_HSYNCWIDTH_LSB);
     dev->sm.v_synclen = isl_readreg(dev, ISL_VSYNCWIDTH) & 0x7f;
     dev->sm.h_sync_backporch = (isl_readreg(dev, ISL_DESTART_MSB) << 8) | isl_readreg(dev, ISL_DESTART_LSB);
     dev->sm.h_active = (isl_readreg(dev, ISL_DEWIDTH_MSB) << 8) | isl_readreg(dev, ISL_DEWIDTH_LSB);
