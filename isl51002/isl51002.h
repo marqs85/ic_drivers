@@ -85,6 +85,7 @@ typedef struct {
 typedef struct {
     uint32_t i2cm_base;
     uint8_t i2c_addr;
+    uint8_t xclk_out_en;
     uint32_t xtal_freq;
     uint8_t powered_on;
     uint8_t sync_active;

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2019  Markus Hiienkari <mhiienka@niksula.hut.fi>
+// Copyright (C) 2020  Markus Hiienkari <mhiienka@niksula.hut.fi>
 //
 // This file is part of Open Source Scan Converter project.
 //
@@ -17,8 +17,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef ADV7611_REGS_H_
-#define ADV7611_REGS_H_
+#ifndef THS7353_REGS_H_
+#define THS7353_REGS_H_
 
+#define THS_CH1 0x01
+#define THS_CH2 0x02
+#define THS_CH3 0x03
 
-#endif /* ADV7611_REGS_H_ */
+#endif /* THS7353_REGS_H_ */

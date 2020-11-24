@@ -61,13 +61,19 @@ uint8_t isl_readreg(isl51002_dev *dev, uint8_t regaddr) {
 }
 
 int isl_init(isl51002_dev *dev) {
+    uint8_t xtal_mhz;
+
     isl_enable_power(dev, 0);
 
     // 8-bit output
     isl_writereg(dev, ISL_OUTFORMAT1, 0x08);
 
-    // enable XTALCLK output, set HSout active low
-    isl_writereg(dev, ISL_OUTFORMAT2, 0x48);
+    // set XTAL freq
+    xtal_mhz = (dev->xtal_freq + 500000) / 1000000;
+    isl_writereg(dev, ISL_XTALFREQ, (xtal_mhz <= 10) ? 0x0a : ((xtal_mhz >= 31) ? 0x1f : xtal_mhz));
+
+    // configure XTALCLK output, set HSout active low
+    isl_writereg(dev, ISL_OUTFORMAT2, (dev->xclk_out_en << 6) | 0x08);
 
     // CH1 SOG only
     isl_writereg(dev, ISL_SYNCPOLLCFG, 0x20);

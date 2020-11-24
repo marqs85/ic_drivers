@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2019  Markus Hiienkari <mhiienka@niksula.hut.fi>
+// Copyright (C) 2019-2020  Markus Hiienkari <mhiienka@niksula.hut.fi>
 //
 // This file is part of Open Source Scan Converter project.
 //
@@ -17,29 +17,29 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef ADV7611_H_
-#define ADV7611_H_
+#ifndef ADV761X_H_
+#define ADV761X_H_
 
 #include <stdio.h>
 #include <stdint.h>
 #include "sysconfig.h"
-#include "adv7611_regs.h"
+#include "adv761x_regs.h"
 
 typedef enum {
-    ADV7611_IO_MAP = 0,
-    ADV7611_DPLL_MAP,
-    ADV7611_HDMI_MAP,
-    ADV7611_KSV_MAP,
-    ADV7611_INFOFRAME_MAP,
-    ADV7611_CP_MAP,
-    ADV7611_CEC_MAP,
-    ADV7611_EDID_MAP,
-} adv7611_reg_map;
+    ADV761X_IO_MAP = 0,
+    ADV761X_DPLL_MAP,
+    ADV761X_HDMI_MAP,
+    ADV761X_KSV_MAP,
+    ADV761X_INFOFRAME_MAP,
+    ADV761X_CP_MAP,
+    ADV761X_CEC_MAP,
+    ADV761X_EDID_MAP,
+} adv761x_reg_map;
 
 typedef enum {
-    ADV7611_RGB_LIMITED = 0,
-    ADV7611_RGB_FULL,
-} adv7611_rgb_range;
+    ADV761X_RGB_LIMITED = 0,
+    ADV761X_RGB_FULL,
+} adv761x_rgb_range;
 
 typedef struct {
     uint16_t h_active;
@@ -53,11 +53,11 @@ typedef struct {
     uint8_t interlace_flag;
     uint8_t h_polarity;
     uint8_t v_polarity;
-} adv7611_sync_status;
+} adv761x_sync_status;
 
 typedef struct {
-    adv7611_rgb_range default_rgb_range;
-} adv7611_config;
+    adv761x_rgb_range default_rgb_range;
+} adv761x_config;
 
 typedef struct {
     uint32_t i2cm_base;
@@ -73,25 +73,25 @@ typedef struct {
     uint8_t *edid;
     uint16_t edid_len;
     uint8_t sync_active;
-    adv7611_sync_status ss;
+    adv761x_sync_status ss;
     uint32_t pclk_hz;
     uint32_t pixelrep;
     uint8_t hdmi_mode;
-    adv7611_config cfg;
-} adv7611_dev;
+    adv761x_config cfg;
+} adv761x_dev;
 
-void adv7611_init(adv7611_dev *dev);
+void adv761x_init(adv761x_dev *dev);
 
-void adv7611_enable_power(adv7611_dev *dev, int enable);
+void adv761x_enable_power(adv761x_dev *dev, int enable);
 
-void adv7611_set_default_rgb_range(adv7611_dev *dev, adv7611_rgb_range rng);
+void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng);
 
-void adv7611_set_input_cs(adv7611_dev *dev);
+void adv761x_set_input_cs(adv761x_dev *dev);
 
-int adv7611_check_activity(adv7611_dev *dev);
+int adv761x_check_activity(adv761x_dev *dev);
 
-int adv7611_get_sync_stats(adv7611_dev *dev);
+int adv761x_get_sync_stats(adv761x_dev *dev);
 
-void adv7611_update_config(adv7611_dev *dev, adv7611_config *cfg);
+void adv761x_update_config(adv761x_dev *dev, adv761x_config *cfg);
 
-#endif /* ADV7611_H_ */
+#endif /* ADV761X_H_ */
