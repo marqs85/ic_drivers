@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include "si5351.h"
 #include "i2c_opencores.h"
 
@@ -129,26 +130,33 @@ static void si5351_writereg(si5351_dev *dev, uint8_t regaddr, uint8_t data)
     I2C_write(dev->i2cm_base, data, 1);
 }
 
-static void si5351_set_pll_fb_multisynth(si5351_dev *dev, si5351_pll_ch pll_ch, uint32_t p1, uint32_t p2, uint32_t p3) {
+static int si5351_set_pll_fb_multisynth(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_pll_msn_config_t *cfg) {
     uint8_t fb_int_reg;
     uint8_t msn_base = SI5351_MSNA_BASE + pll_ch*8;
 
-    si5351_writereg(dev, msn_base+0, (p3 >> 8) & 0xff);
-    si5351_writereg(dev, msn_base+1, (p3 & 0xff));
-    si5351_writereg(dev, msn_base+2, (p1 >> 16) & 0x3);
-    si5351_writereg(dev, msn_base+3, (p1 >> 8) & 0xff);
-    si5351_writereg(dev, msn_base+4, (p1 & 0xff));
-    si5351_writereg(dev, msn_base+5, (((p3 >> 16) & 0xf) << 4) | ((p2 >> 16) & 0xf));
-    si5351_writereg(dev, msn_base+6, (p2 >> 8) & 0xff);
-    si5351_writereg(dev, msn_base+7, (p2 & 0xff));
+    if (!memcmp(&dev->pll_msn_config[pll_ch], cfg, sizeof(si5351_pll_msn_config_t)))
+        return 0;
+
+    si5351_writereg(dev, msn_base+0, (cfg->p3 >> 8) & 0xff);
+    si5351_writereg(dev, msn_base+1, (cfg->p3 & 0xff));
+    si5351_writereg(dev, msn_base+2, (cfg->p1 >> 16) & 0x3);
+    si5351_writereg(dev, msn_base+3, (cfg->p1 >> 8) & 0xff);
+    si5351_writereg(dev, msn_base+4, (cfg->p1 & 0xff));
+    si5351_writereg(dev, msn_base+5, (((cfg->p3 >> 16) & 0xf) << 4) | ((cfg->p2 >> 16) & 0xf));
+    si5351_writereg(dev, msn_base+6, (cfg->p2 >> 8) & 0xff);
+    si5351_writereg(dev, msn_base+7, (cfg->p2 & 0xff));
 
     fb_int_reg = si5351_readreg(dev, SI5351_CLK6_CTRL+pll_ch);
     fb_int_reg &= ~(1<<6);
-    if ((p1 % 256) == 0) {
+    if ((cfg->p1 % 256) == 0) {
         fb_int_reg |= (1<<6);
         printf("Si5351 set PLL FB multisynth to integer mode\n");
     }
     si5351_writereg(dev, SI5351_CLK6_CTRL+pll_ch, fb_int_reg);
+
+    memcpy(&dev->pll_msn_config[pll_ch], cfg, sizeof(si5351_pll_msn_config_t));
+
+    return 1;
 }
 
 static void si5351_set_output_multisynth(si5351_dev *dev, si5351_out_ch out_ch, uint32_t p1, uint32_t p2, uint32_t p3, uint8_t divby4) {
@@ -235,19 +243,22 @@ static void si5351_set_output_divider(si5351_dev *dev, si5351_out_ch out_ch, uin
 }
 
 void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, si5351_ms_config_t *ms_conf) {
+    si5351_pll_msn_config_t pll_msn_config = {ms_conf->msn_p1, ms_conf->msn_p2, ms_conf->msn_p3};
+    int pll_rst_needed;
 
     //set PLL source and clockdiv
     si5351_configure_pll(dev, pll_ch, clksrc, ms_conf->clkin_div_regval);
 
     // set PLL and output multisynth
-    si5351_set_pll_fb_multisynth(dev, pll_ch, ms_conf->msn_p1, ms_conf->msn_p2, ms_conf->msn_p3);
+    pll_rst_needed = si5351_set_pll_fb_multisynth(dev, pll_ch, &pll_msn_config);
     si5351_set_output_multisynth(dev, out_ch, ms_conf->ms_p1, ms_conf->ms_p2, ms_conf->ms_p3, ms_conf->divby4);
 
     // Set MS & output source clocks and power up output clock driver
     si5351_configure_clk(dev, pll_ch, out_ch, clksrc, 0);
 
     // Reset PLL to prevent occasional lockup
-    si5351_pll_reset(dev, pll_ch);
+    if (pll_rst_needed)
+        si5351_pll_reset(dev, pll_ch);
 
     // Set output divider
     si5351_set_output_divider(dev, out_ch, ms_conf->outdiv);
@@ -259,10 +270,12 @@ void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch o
 }
 
 int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clksrc_hz, uint8_t mult, uint8_t outdiv) {
+    si5351_pll_msn_config_t pll_msn_config;;
     uint32_t fbdiv_x100, msn_a, msn_p1, ms_a, ms_p1;
     uint8_t clkin_div, clkin_div_regval;
     uint8_t divby4=0;
     uint8_t optim_ratio;
+    int pll_rst_needed;
 
     if ((mult == 0) || (clksrc_hz < SI_CLKIN_MIN_FREQ) || (clksrc_hz*mult > SI_MAX_OUTPUT_FREQ)) {
         printf("ERROR: Si5351 max. output freq exceeded\n\n");
@@ -295,7 +308,11 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
         if ((msn_a < 16) || (msn_a > 90))
             printf("ERROR: Si5351 invalid msn_a of %lu\n\n", msn_a);
         msn_p1 = 128*msn_a - 512;
-        si5351_set_pll_fb_multisynth(dev, pll_ch, msn_p1, 0, 1);
+
+        pll_msn_config.p1 = msn_p1;
+        pll_msn_config.p2 = 0;
+        pll_msn_config.p3 = 1;
+        pll_rst_needed = si5351_set_pll_fb_multisynth(dev, pll_ch, &pll_msn_config);
 
         ms_a = msn_a / (mult*clkin_div);
         // 6 and 8 seem to be ok in integer mode despite what AN619 4.1.2 implies
@@ -313,7 +330,8 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
         si5351_configure_clk(dev, pll_ch, out_ch, clksrc, 0);
 
         // Reset PLL to prevent occasional lockup
-        si5351_pll_reset(dev, pll_ch);
+        if (pll_rst_needed)
+            si5351_pll_reset(dev, pll_ch);
     }
 
     // Set output divider
@@ -328,6 +346,8 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
 void si5351_init(si5351_dev *dev) {
     int i;
     uint8_t ret;
+
+    memset(dev->pll_msn_config, 0x00, sizeof(dev->pll_msn_config));
 
     // Wait until Si5351 initialization is complete
     while ((si5351_readreg(dev, 0x00) & 0x80) == 0x80) ;
