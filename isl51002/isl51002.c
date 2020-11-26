@@ -238,10 +238,13 @@ void isl_de_adj(isl51002_dev *dev) {
 }
 
 void isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase) {
-    if (!sampler_phase)
+    if (!sampler_phase) {
+        printf("Auto-adjusting phase\n");
         isl_writereg(dev, ISL_PHASEADJCMD, 0x03);
-    else
+    } else {
         isl_writereg(dev, ISL_HPLL_PHASE, sampler_phase-1);
+        printf("Phase set to %u deg\n", (((sampler_phase-1)*360)+16)/32);
+    }
 }
 
 uint16_t isl_get_afe_bw_value(uint8_t index) {
