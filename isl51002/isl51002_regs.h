@@ -97,4 +97,8 @@
 #define ISL_AFECTRL             0x60
 #define ISL_ADCCTRL             0x61
 
+// Undocumented
+#define ISL_CLAMP_STR           0x64
+#define ISL_PLL_TUNE            0x74
+
 #endif /* ISL51002_REGS_H_ */

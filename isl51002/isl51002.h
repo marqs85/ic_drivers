@@ -41,6 +41,7 @@ typedef struct {
     color_setup_t col;
     uint8_t pre_coast;
     uint8_t post_coast;
+    uint8_t clamp_str;
     uint16_t clamp_alc_start;
     uint8_t clamp_alc_width;
     uint8_t coast_clamp;
@@ -51,6 +52,7 @@ typedef struct {
     uint8_t hsync_vth;
     uint8_t sog_vth;
     uint8_t sync_gf;
+    uint8_t pll_loop_gain;
 } isl51002_config;
 
 typedef struct {

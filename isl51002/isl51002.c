@@ -32,6 +32,7 @@ const isl51002_config isl_cfg_default = {
     .col = {0x154, 0x154, 0x154, 0x200, 0x200, 0x200},
     .pre_coast = 4,
     .post_coast = 4,
+    .clamp_str = 1,
     .clamp_alc_start = 2,
     .clamp_alc_width = 16,
     .coast_clamp = 1,
@@ -41,7 +42,8 @@ const isl51002_config isl_cfg_default = {
     .afe_bw = 0,
     .hsync_vth = 4,
     .sog_vth = 6,
-    .sync_gf = 4
+    .sync_gf = 4,
+    .pll_loop_gain = 0
 };
 
 void isl_writereg(isl51002_dev *dev, uint8_t regaddr, uint8_t data) {
@@ -341,6 +343,8 @@ void isl_update_config(isl51002_dev *dev, isl51002_config *cfg) {
         isl_writereg(dev, ISL_HPLL_PRECOAST, cfg->pre_coast);
     if (cfg->post_coast != dev->cfg.post_coast)
         isl_writereg(dev, ISL_HPLL_POSTCOAST, cfg->post_coast);
+    if (cfg->clamp_str != dev->cfg.clamp_str)
+        isl_writereg(dev, ISL_CLAMP_STR, (cfg->clamp_str<<4) | 0x8);
     if (cfg->clamp_alc_start != dev->cfg.clamp_alc_start) {
         isl_writereg(dev, ISL_ABLC_START_MSB, (cfg->clamp_alc_start >> 8));
         isl_writereg(dev, ISL_ABLC_START_LSB, (cfg->clamp_alc_start & 0xff));
@@ -371,6 +375,8 @@ void isl_update_config(isl51002_dev *dev, isl51002_config *cfg) {
         val = isl_readreg(dev, ISL_SYNCCFG) & ~(0x0f<<0);
         isl_writereg(dev, ISL_SYNCCFG, val | cfg->sync_gf);
     }
+    if (cfg->pll_loop_gain != dev->cfg.pll_loop_gain)
+        isl_writereg(dev, ISL_PLL_TUNE, 0x49+cfg->pll_loop_gain);
 
     if (cfg->afe_bw != dev->cfg.afe_bw) {
         if (!cfg->afe_bw) {
