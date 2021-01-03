@@ -23,8 +23,8 @@
 
 const adv7513_config adv7513_cfg_default = {
     .tx_mode = TX_HDMI_RGB_FULL,
-    .audio_fmt = ADV_AUDIO_I2S,
-    .i2s_fs = ADV_48KHZ,
+    .audio_fmt = AUDIO_I2S,
+    .i2s_fs = FS_48KHZ,
     .i2s_chcfg = ADV_2CH_STEREO
 };
 
@@ -120,12 +120,12 @@ void adv7513_get_default_cfg(adv7513_config *cfg) {
     memcpy(cfg, &adv7513_cfg_default, sizeof(adv7513_config));
 }
 
-void adv7513_set_audio(adv7513_dev *dev, adv7513_audio_fmt_t fmt, adv7513_i2s_fs_t i2s_fs, adv7513_i2s_chcfg_t i2s_chcfg) {
+void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, adv7513_i2s_chcfg_t i2s_chcfg) {
     uint32_t N=6144;
     uint8_t fs_val=0, ca_val=0, cc_val=0;
     uint8_t val;
 
-    if (fmt == ADV_AUDIO_SPDIF) {
+    if (fmt == AUDIO_SPDIF) {
         N = 6144;
         adv7513_writereg(dev, 0x0A, 0x10);
         adv7513_writereg(dev, 0x0B, 0x8e);
@@ -134,15 +134,15 @@ void adv7513_set_audio(adv7513_dev *dev, adv7513_audio_fmt_t fmt, adv7513_i2s_fs
         adv7513_writereg(dev, 0x0B, 0x0e);
 
         switch (i2s_fs) {
-            case ADV_48KHZ:
+            case FS_48KHZ:
                 N = 6144;
                 fs_val = 0x2;
                 break;
-            case ADV_96KHZ:
+            case FS_96KHZ:
                 N = 12288;
                 fs_val = 0xa;
                 break;
-            case ADV_192KHZ:
+            case FS_192KHZ:
                 N = 24576;
                 fs_val = 0xe;
                 break;
@@ -186,13 +186,13 @@ void adv7513_set_audio(adv7513_dev *dev, adv7513_audio_fmt_t fmt, adv7513_i2s_fs
     adv7513_writereg(dev, 0x4A, 0x80); // Disable Audio InfoFrame modify
 }
 
-void adv7513_set_tx_mode(adv7513_dev *dev, tx_mode_t mode) {
+void adv7513_set_tx_mode(adv7513_dev *dev, HDMI_tx_mode_t mode) {
     if (mode == TX_HDMI_YCBCR444)
-        adv7513_set_csc_mode(dev, 1, CSC_RGB_FULL, CSC_YCBCR_709);
+        adv7513_set_csc_mode(dev, 1, CS_RGB_FULL, CS_YCBCR_709);
     else if (mode == TX_HDMI_RGB_LIM)
-        adv7513_set_csc_mode(dev, 1, CSC_RGB_FULL, CSC_RGB_LIMITED);
+        adv7513_set_csc_mode(dev, 1, CS_RGB_FULL, CS_RGB_LIMITED);
     else
-        adv7513_set_csc_mode(dev, 0, CSC_RGB_FULL, CSC_RGB_FULL);
+        adv7513_set_csc_mode(dev, 0, CS_RGB_FULL, CS_RGB_FULL);
 
     adv7513_writereg(dev, 0xAF, ((1<<2) | ((mode != TX_DVI) << 1)));
 
@@ -203,7 +203,7 @@ void adv7513_set_tx_mode(adv7513_dev *dev, tx_mode_t mode) {
     adv7513_writereg(dev, 0x4A, 0x80); // Disable AVI InfoFrame modify
 }
 
-void adv7513_set_csc_mode(adv7513_dev *dev, uint8_t enable, csc_colorspace_t src, csc_colorspace_t dst) {
+void adv7513_set_csc_mode(adv7513_dev *dev, uint8_t enable, HDMI_colorspace_t src, HDMI_colorspace_t dst) {
     uint8_t val;
     uint8_t coeffs_rgbf_ycbcr709[] = {0x86, 0xff, 0x19, 0xa6, 0x1f, 0x5b, 0x08, 0x00,
                                       0x02, 0xe9, 0x09, 0xcb, 0x00, 0xfd, 0x01, 0x00,
@@ -217,20 +217,20 @@ void adv7513_set_csc_mode(adv7513_dev *dev, uint8_t enable, csc_colorspace_t src
         val = adv7513_readreg(dev, 0x18) & ~(1<<7);
         adv7513_writereg(dev, 0x18, val);
     } else {
-        if ((src==CSC_RGB_FULL) && (dst==CSC_YCBCR_709)) {
+        if ((src==CS_RGB_FULL) && (dst==CS_YCBCR_709)) {
             for (i=0; i<sizeof(coeffs_rgbf_ycbcr709)/sizeof(uint8_t); i++)
                 adv7513_writereg(dev, 0x18+i, coeffs_rgbf_ycbcr709[i]);
-        } else if ((src==CSC_RGB_FULL) && (dst==CSC_RGB_LIMITED)) {
+        } else if ((src==CS_RGB_FULL) && (dst==CS_RGB_LIMITED)) {
             for (i=0; i<sizeof(coeffs_rgbf_rgbl)/sizeof(uint8_t); i++)
                 adv7513_writereg(dev, 0x18+i, coeffs_rgbf_rgbl[i]);
         }
     }
 
     val = adv7513_readreg(dev, 0x16) & ~(1<<0);
-    adv7513_writereg(dev, 0x16, val | (dst>CSC_RGB_LIMITED));
+    adv7513_writereg(dev, 0x16, val | (dst>CS_RGB_LIMITED));
 }
 
-void adv7513_set_pixelrep_vic(adv7513_dev *dev, uint8_t pixelrep, uint8_t pixelrep_infoframe, HDMI_Video_Type vic) {
+void adv7513_set_pixelrep_vic(adv7513_dev *dev, uint8_t pixelrep, uint8_t pixelrep_infoframe, HDMI_vic_t vic) {
     adv7513_writereg(dev, 0x3B, (0xC0 | (pixelrep << 3) | (pixelrep_infoframe << 1)));
     adv7513_writereg(dev, 0x3C, vic);
 

@@ -154,7 +154,7 @@ int isl_check_activity(isl51002_dev *dev, isl_input_t input, video_sync syncinpu
         activity_change = 1;
         memset(&dev->ss, 0, sizeof(isl51002_sync_status));
 
-        printf("isl activity: 0x%lx\n", sync_activity);
+        printf("isl activity: 0x%x\n", sync_activity);
     }
 
     dev->sync_active = sync_active;
@@ -206,7 +206,7 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
     {
         mode_changed = 1;
 
-        printf("isl sync params: 0x%lx\n", sync_params);
+        printf("isl sync params: 0x%x\n", sync_params);
 #ifdef ISL_SYNC_MEAS
         printf("isl h_period_x16: %u\n", dev->sm.h_period_x16);
         printf("isl h_synclen_x16: %u\n", dev->sm.h_synclen_x16);
