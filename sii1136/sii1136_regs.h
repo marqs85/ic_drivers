@@ -35,11 +35,16 @@
 // audio configuration (0x1F...0x28)
 #define SII1136_I2S_IN_MAP              0x1F
 #define SII1136_I2S_IN_CFG              0x20
+
 #define SII1136_I2S_STAT                0x21
-#define SII1136_I2S_CHCODE              0x22
+#define SII1136_I2S_CATCODE             0x22
 #define SII1136_I2S_CHNUM               0x23
 #define SII1136_I2S_ACC_SFS             0x24
 #define SII1136_I2S_OFS_LEN             0x25
+
+#define SII1136_SPDIF_HDR               0x24
+#define SII1136_SPDIF_PROC              0x25
+
 #define SII1136_AUDIOMODE               0x26
 
 // interrupt registers
