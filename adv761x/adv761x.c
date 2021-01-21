@@ -132,6 +132,11 @@ void adv761x_init(adv761x_dev *dev) {
 
     // set default RGB range
     adv761x_set_default_rgb_range(dev, dev->cfg.default_rgb_range);
+
+    // allow compressed audio
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_AUDIO_MUTE_MSK, 0x1f);
+
+    adv761x_set_spdif_mux(dev, (dev->audio_sample_type == IEC60958_SAMPLE_NONPCM));
 }
 
 void adv761x_enable_power(adv761x_dev *dev, int enable) {
@@ -140,6 +145,10 @@ void adv761x_enable_power(adv761x_dev *dev, int enable) {
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng) {
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_47H, ((1<<2)|(rng<<1)));
+}
+
+void adv761x_set_spdif_mux(adv761x_dev *dev, int enable) {
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_DST_MAP_REG, (0x04 | (enable<<3)));
 }
 
 void adv761x_set_input_cs(adv761x_dev *dev) {
@@ -267,9 +276,31 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     return mode_changed;
 }
 
+HDMI_audio_sample_type_t adv761x_get_audio_sample_type(adv761x_dev *dev) {
+    return !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_IEC60958_DATA_1) & (1<<1));
+}
+
+HDMI_i2s_fs_t adv761x_get_i2s_fs(adv761x_dev *dev) {
+    return (adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_IEC60958_DATA_4) & 0xf);
+}
+
+HDMI_audio_cc_t adv761x_get_audio_cc(adv761x_dev *dev) {
+    return (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_AUD_INFOFRAME_DB1) & 0x7);
+}
+
+HDMI_audio_ca_t adv761x_get_audio_ca(adv761x_dev *dev) {
+    return adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_AUD_INFOFRAME_DB4);
+}
+
 void adv761x_update_config(adv761x_dev *dev, adv761x_config *cfg) {
+    HDMI_audio_sample_type_t audio_sample_type = adv761x_get_audio_sample_type(dev);
+
     if (cfg->default_rgb_range != dev->cfg.default_rgb_range)
         adv761x_set_default_rgb_range(dev, cfg->default_rgb_range);
+    if (audio_sample_type != dev->audio_sample_type) {
+        adv761x_set_spdif_mux(dev, (audio_sample_type == IEC60958_SAMPLE_NONPCM));
+        dev->audio_sample_type = audio_sample_type;
+    }
 
     memcpy(&dev->cfg, cfg, sizeof(adv761x_config));
 }

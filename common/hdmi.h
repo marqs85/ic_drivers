@@ -72,9 +72,46 @@ typedef enum {
 } HDMI_audio_fmt_t;
 
 typedef enum {
-    FS_48KHZ = 0,
-    FS_96KHZ,
-    FS_192KHZ
+    IEC60958_SAMPLE_LPCM = 0,
+    IEC60958_SAMPLE_NONPCM = 1
+} HDMI_audio_sample_type_t;
+
+typedef enum {
+    CC_HDR = 0,
+    CC_2CH = 1,
+    CC_3CH = 2,
+    CC_4CH = 3,
+    CC_5CH = 4,
+    CC_6CH = 5,
+    CC_7CH = 6,
+    CC_8CH = 7
+} HDMI_audio_cc_t;
+
+typedef enum {
+    CA_2p0 = 0x00,
+    CA_4p0 = 0x08,
+    CA_5p1 = 0x0b,
+    CA_7p1 = 0x13,
+    CA_SP_MSK = 0xfe,
+    CA_CH_IDX = 0xff
+} HDMI_audio_ca_t;
+
+typedef enum {
+    IEC60958_FS_32KHZ = 0x3,
+    IEC60958_FS_44P1KHZ = 0x0,
+    IEC60958_FS_48KHZ = 0x2,
+    IEC60958_FS_88P2KHZ = 0x8,
+    IEC60958_FS_96KHZ = 0xa,
+    IEC60958_FS_176P4KHZ = 0xc,
+    IEC60958_FS_192KHZ = 0xe,
+    IEC60958_FS_768KHZ = 0x9
 } HDMI_i2s_fs_t;
+
+typedef enum {
+    I2S_2CH_STEREO = 0,
+    I2S_4CH_STEREO_4p0,
+    I2S_4CH_STEREO_5p1,
+    I2S_4CH_STEREO_7p1,
+} HDMI_i2s_stereo_cfg_t;
 
 #endif

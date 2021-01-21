@@ -26,18 +26,13 @@
 #include "hdmi.h"
 #include "adv7513_regs.h"
 
-typedef enum {
-    ADV_2CH_STEREO = 0,
-    ADV_4CH_STEREO_4p0,
-    ADV_4CH_STEREO_5p1,
-    ADV_4CH_STEREO_7p1,
-} adv7513_i2s_chcfg_t;
-
 typedef struct {
     HDMI_tx_mode_t tx_mode;
     HDMI_audio_fmt_t audio_fmt;
     HDMI_i2s_fs_t i2s_fs;
-    adv7513_i2s_chcfg_t i2s_chcfg;
+    HDMI_i2s_stereo_cfg_t i2s_stereo_cfg;
+    HDMI_audio_cc_t audio_cc_val;
+    HDMI_audio_ca_t audio_ca_val;
 } adv7513_config;
 
 typedef struct {
@@ -59,7 +54,7 @@ void adv7513_enable_power(adv7513_dev *dev, int enable);
 
 void adv7513_get_default_cfg(adv7513_config *cfg);
 
-void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, adv7513_i2s_chcfg_t i2s_chcfg);
+void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val);
 
 void adv7513_set_tx_mode(adv7513_dev *dev, HDMI_tx_mode_t mode);
 

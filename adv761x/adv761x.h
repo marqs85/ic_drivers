@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "sysconfig.h"
+#include "hdmi.h"
 #include "adv761x_regs.h"
 
 typedef enum {
@@ -77,6 +78,7 @@ typedef struct {
     uint32_t pclk_hz;
     uint32_t pixelrep;
     uint8_t hdmi_mode;
+    HDMI_audio_sample_type_t audio_sample_type;
     adv761x_config cfg;
 } adv761x_dev;
 
@@ -86,11 +88,21 @@ void adv761x_enable_power(adv761x_dev *dev, int enable);
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng);
 
+void adv761x_set_spdif_mux(adv761x_dev *dev, int enable);
+
 void adv761x_set_input_cs(adv761x_dev *dev);
 
 int adv761x_check_activity(adv761x_dev *dev);
 
 int adv761x_get_sync_stats(adv761x_dev *dev);
+
+HDMI_audio_sample_type_t adv761x_get_audio_sample_type(adv761x_dev *dev);
+
+HDMI_i2s_fs_t adv761x_get_i2s_fs(adv761x_dev *dev);
+
+HDMI_audio_cc_t adv761x_get_audio_cc(adv761x_dev *dev);
+
+HDMI_audio_ca_t adv761x_get_audio_ca(adv761x_dev *dev);
 
 void adv761x_update_config(adv761x_dev *dev, adv761x_config *cfg);
 

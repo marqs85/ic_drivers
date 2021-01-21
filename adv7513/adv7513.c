@@ -24,8 +24,10 @@
 const adv7513_config adv7513_cfg_default = {
     .tx_mode = TX_HDMI_RGB_FULL,
     .audio_fmt = AUDIO_I2S,
-    .i2s_fs = FS_48KHZ,
-    .i2s_chcfg = ADV_2CH_STEREO
+    .i2s_fs = IEC60958_FS_48KHZ,
+    .i2s_stereo_cfg = I2S_2CH_STEREO,
+    .audio_cc_val = CC_2CH,
+    .audio_ca_val = CA_2p0
 };
 
 void adv7513_writereg(adv7513_dev *dev, uint8_t regaddr, uint8_t data)
@@ -96,13 +98,10 @@ void adv7513_enable_power(adv7513_dev *dev, int enable) {
         // https://ez.analog.com/video/f/q-a/10535/adv7513-input-video-data-timings
         adv7513_writereg(dev, 0xBA, 0x60);
 
-        // I2S0 input for I2S audio
-        adv7513_writereg(dev, 0x0C, 0x04);
+        // Enable I2S[3:0] inputs for I2S audio
+        adv7513_writereg(dev, 0x0C, 0x3C);
 
-        // Quad stereo
-        adv7513_writereg(dev, 0x10, 0x01);
-
-        adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_chcfg);
+        adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
 
         // Setup manual pixel repetition
         adv7513_writereg(dev, 0x3B, (0xC0 | (dev->pixelrep << 3) | (dev->pixelrep_infoframe << 1)));
@@ -120,12 +119,13 @@ void adv7513_get_default_cfg(adv7513_config *cfg) {
     memcpy(cfg, &adv7513_cfg_default, sizeof(adv7513_config));
 }
 
-void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, adv7513_i2s_chcfg_t i2s_chcfg) {
+void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val) {
     uint32_t N=6144;
-    uint8_t fs_val=0, ca_val=0, cc_val=0;
     uint8_t val;
 
     if (fmt == AUDIO_SPDIF) {
+        cc_val = CC_HDR;
+        ca_val = 0;
         N = 6144;
         adv7513_writereg(dev, 0x0A, 0x10);
         adv7513_writereg(dev, 0x0B, 0x8e);
@@ -134,44 +134,58 @@ void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
         adv7513_writereg(dev, 0x0B, 0x0e);
 
         switch (i2s_fs) {
-            case FS_48KHZ:
+            case IEC60958_FS_32KHZ:
+                N = 4096;
+                break;
+            case IEC60958_FS_44P1KHZ:
+                N = 6272;
+                break;
+            case IEC60958_FS_48KHZ:
                 N = 6144;
-                fs_val = 0x2;
                 break;
-            case FS_96KHZ:
+            case IEC60958_FS_88P2KHZ:
+                N = 12544;
+                break;
+            case IEC60958_FS_96KHZ:
                 N = 12288;
-                fs_val = 0xa;
                 break;
-            case FS_192KHZ:
+            case IEC60958_FS_176P4KHZ:
+                N = 25088;
+                break;
+            case IEC60958_FS_192KHZ:
                 N = 24576;
-                fs_val = 0xe;
                 break;
             default:
                 break;
         }
 
         val = adv7513_readreg(dev, 0x15) & 0x0f;
-        adv7513_writereg(dev, 0x15, val | (fs_val<<4));
+        adv7513_writereg(dev, 0x15, val | (i2s_fs<<4));
 
-        switch (i2s_chcfg) {
-            case ADV_2CH_STEREO:
-                ca_val = 0x00;
-                cc_val = 0x1;
-                break;
-            case ADV_4CH_STEREO_4p0:
-                ca_val = 0x08;
-                cc_val = 0x3;
-                break;
-            case ADV_4CH_STEREO_5p1:
-                ca_val = 0x0b;
-                cc_val = 0x5;
-                break;
-            case ADV_4CH_STEREO_7p1:
-                ca_val = 0x13;
-                cc_val = 0x7;
-                break;
-            default:
-                break;
+        if (cc_val == CC_2CH) {
+            switch (i2s_stereo_cfg) {
+                case I2S_2CH_STEREO:
+                    ca_val = CA_2p0;
+                    break;
+                case I2S_4CH_STEREO_4p0:
+                    cc_val = CC_4CH;
+                    ca_val = CA_4p0;
+                    break;
+                case I2S_4CH_STEREO_5p1:
+                    cc_val = CC_6CH;
+                    ca_val = CA_5p1;
+                    break;
+                case I2S_4CH_STEREO_7p1:
+                    cc_val = CC_8CH;
+                    ca_val = CA_7p1;
+                    break;
+                default:
+                    break;
+            }
+
+            adv7513_writereg(dev, 0x10, 0x01);
+        } else {
+            adv7513_writereg(dev, 0x10, 0x25);
         }
     }
 
@@ -264,8 +278,10 @@ void adv7513_update_config(adv7513_dev *dev, adv7513_config *cfg) {
             adv7513_set_tx_mode(dev, cfg->tx_mode);
         if ((cfg->audio_fmt != dev->cfg.audio_fmt) ||
             (cfg->i2s_fs != dev->cfg.i2s_fs) ||
-            (cfg->i2s_chcfg != dev->cfg.i2s_chcfg))
-            adv7513_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_chcfg);
+            (cfg->i2s_stereo_cfg != dev->cfg.i2s_stereo_cfg) ||
+            (cfg->audio_cc_val != dev->cfg.audio_cc_val) ||
+            (cfg->audio_ca_val != dev->cfg.audio_ca_val))
+            adv7513_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
 
         memcpy(&dev->cfg, cfg, sizeof(adv7513_config));
     }
