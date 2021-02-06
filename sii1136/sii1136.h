@@ -26,18 +26,13 @@
 #include "hdmi.h"
 #include "sii1136_regs.h"
 
-typedef enum {
-    SII_2CH_STEREO = 0,
-    SII_4CH_STEREO_4p0,
-    SII_4CH_STEREO_5p1,
-    SII_4CH_STEREO_7p1,
-} sii1136_i2s_chcfg_t;
-
 typedef struct {
     HDMI_tx_mode_t tx_mode;
     HDMI_audio_fmt_t audio_fmt;
     HDMI_i2s_fs_t i2s_fs;
-    sii1136_i2s_chcfg_t i2s_chcfg;
+    HDMI_i2s_stereo_cfg_t i2s_stereo_cfg;
+    HDMI_audio_cc_t audio_cc_val;
+    HDMI_audio_ca_t audio_ca_val;
 } sii1136_config;
 
 typedef struct {
@@ -50,13 +45,13 @@ typedef struct {
     sii1136_config cfg;
 } sii1136_dev;
 
-void sii1136_init(sii1136_dev *dev);
+int sii1136_init(sii1136_dev *dev);
 
 void sii1136_get_default_cfg(sii1136_config *cfg);
 
 void sii1136_enable_power(sii1136_dev *dev, int enable);
 
-void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, sii1136_i2s_chcfg_t i2s_chcfg);
+void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg);
 
 void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode);
 

@@ -25,8 +25,10 @@
 const sii1136_config sii1136_cfg_default = {
     .tx_mode = TX_HDMI_RGB_FULL,
     .audio_fmt = AUDIO_I2S,
-    .i2s_fs = FS_48KHZ,
-    .i2s_chcfg = SII_2CH_STEREO
+    .i2s_fs = IEC60958_FS_48KHZ,
+    .i2s_stereo_cfg = I2S_2CH_STEREO,
+    .audio_cc_val = CC_2CH,
+    .audio_ca_val = CA_2p0
 };
 
 void sii1136_writereg(sii1136_dev *dev, uint8_t regaddr, uint8_t data)
@@ -51,13 +53,16 @@ void sii1136_get_default_cfg(sii1136_config *cfg) {
     memcpy(cfg, &sii1136_cfg_default, sizeof(sii1136_config));
 }
 
-void sii1136_init(sii1136_dev *dev) {
+int sii1136_init(sii1136_dev *dev) {
     uint8_t regval;
 
     memcpy(&dev->cfg, &sii1136_cfg_default, sizeof(sii1136_config));
 
     // Enable TPI mode
     sii1136_writereg(dev, SII1136_TPI_ENABLE, 0x00);
+
+    if (sii1136_readreg(dev, SII1136_DEVICE_ID) != 0xB4)
+        return -1;
 
     // SW reset
     sii1136_writereg(dev, SII1136_TPI_CTRL, 0x81);
@@ -80,8 +85,10 @@ void sii1136_init(sii1136_dev *dev) {
     // Enable interrupts
     //sii1136_writereg(dev, SII1136_IRQ_ENABLE, 0xFB);
 
-    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_chcfg);
+    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg);
     sii1136_set_tx_mode(dev, dev->cfg.tx_mode);
+
+    return 0;
 }
 
 void sii1136_enable_power(sii1136_dev *dev, int enable) {
@@ -161,7 +168,7 @@ void sii1136_update_infoframe(sii1136_dev *dev, uint8_t type) {
     }
 }
 
-void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, sii1136_i2s_chcfg_t i2s_chcfg) {
+void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg) {
     int i;
     uint8_t fs_val=0, ca_val=0, cc_val=1;
     uint8_t regval;
@@ -171,33 +178,33 @@ void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
 
     if (fmt == AUDIO_I2S) {
         switch (i2s_fs) {
-            case FS_48KHZ:
+            case IEC60958_FS_48KHZ:
                 fs_val = 0x2;
                 break;
-            case FS_96KHZ:
+            case IEC60958_FS_96KHZ:
                 fs_val = 0xa;
                 break;
-            case FS_192KHZ:
+            case IEC60958_FS_192KHZ:
                 fs_val = 0xe;
                 break;
             default:
                 break;
         }
 
-        switch (i2s_chcfg) {
-            case SII_2CH_STEREO:
+        switch (i2s_stereo_cfg) {
+            case I2S_2CH_STEREO:
                 ca_val = 0x00;
                 cc_val = 0x1;
                 break;
-            case SII_4CH_STEREO_4p0:
+            case I2S_4CH_STEREO_4p0:
                 ca_val = 0x08;
                 cc_val = 0x3;
                 break;
-            case SII_4CH_STEREO_5p1:
+            case I2S_4CH_STEREO_5p1:
                 ca_val = 0x0b;
                 cc_val = 0x5;
                 break;
-            case SII_4CH_STEREO_7p1:
+            case I2S_4CH_STEREO_7p1:
                 ca_val = 0x13;
                 cc_val = 0x7;
                 break;
@@ -312,8 +319,10 @@ void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg) {
             sii1136_set_tx_mode(dev, cfg->tx_mode);
         if ((cfg->audio_fmt != dev->cfg.audio_fmt) ||
             (cfg->i2s_fs != dev->cfg.i2s_fs) ||
-            (cfg->i2s_chcfg != dev->cfg.i2s_chcfg))
-            sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_chcfg);
+            (cfg->i2s_stereo_cfg != dev->cfg.i2s_stereo_cfg) ||
+            (cfg->audio_cc_val != dev->cfg.audio_cc_val) ||
+            (cfg->audio_ca_val != dev->cfg.audio_ca_val))
+            sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg);
 
         memcpy(&dev->cfg, cfg, sizeof(sii1136_config));
     }
