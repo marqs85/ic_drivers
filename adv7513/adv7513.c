@@ -48,8 +48,11 @@ uint8_t adv7513_readreg(adv7513_dev *dev, uint8_t regaddr)
     return I2C_read(dev->i2cm_base,1);
 }
 
-void adv7513_init(adv7513_dev *dev) {
+int adv7513_init(adv7513_dev *dev) {
     memcpy(&dev->cfg, &adv7513_cfg_default, sizeof(adv7513_config));
+
+    if (adv7513_readreg(dev, 0xF5) != 0x75)
+        return -1;
 
     // Setup fixed registers
     adv7513_writereg(dev, 0x98, 0x03);
@@ -62,6 +65,8 @@ void adv7513_init(adv7513_dev *dev) {
     adv7513_writereg(dev, 0xF9, 0x00);
 
     adv7513_enable_power(dev, 0);
+
+    return 0;
 }
 
 void adv7513_enable_power(adv7513_dev *dev, int enable) {
