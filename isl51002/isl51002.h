@@ -143,6 +143,6 @@ uint16_t isl_get_afe_bw(isl51002_dev *dev, uint8_t afe_bw);
 
 void isl_set_de(isl51002_dev *dev);
 
-void isl_update_config(isl51002_dev *dev, isl51002_config *cfg);
+void isl_update_config(isl51002_dev *dev, isl51002_config *cfg, int force_update);
 
 #endif /* ISL51002_H_ */

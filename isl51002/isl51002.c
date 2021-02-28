@@ -29,10 +29,10 @@
 uint16_t afe_bw_arr[] = {9, 10, 11, 12, 14, 17, 21, 24, 30, 38, 50, 75, 83, 105, 149, 450};
 
 const isl51002_config isl_cfg_default = {
-    .col = {0x154, 0x154, 0x154, 0x200, 0x200, 0x200},
+    .col = {0x144, 0x144, 0x144, 0x200, 0x200, 0x200},
     .pre_coast = 4,
     .post_coast = 4,
-    .clamp_str = 1,
+    .clamp_str = 7,
     .clamp_alc_start = 2,
     .clamp_alc_width = 16,
     .coast_clamp = 1,
@@ -98,7 +98,7 @@ int isl_init(isl51002_dev *dev) {
     isl_writereg(dev, ISL_ABLC_START_LSB, 16);
     isl_writereg(dev, ISL_CLAMPWIDTH, 16);*/
 
-    memcpy(&dev->cfg, &isl_cfg_default, sizeof(isl51002_config));
+    isl_update_config(dev, (isl51002_config*)&isl_cfg_default, 1);
 
     return 0;
 }
@@ -321,10 +321,10 @@ void isl_set_de(isl51002_dev *dev) {
     isl_writereg(dev, ISL_LINEWIDTH_LSB, dev->sm.v_active & 0xff);
 }
 
-void isl_update_config(isl51002_dev *dev, isl51002_config *cfg) {
+void isl_update_config(isl51002_dev *dev, isl51002_config *cfg, int force_update) {
     uint8_t val;
 
-    if (memcmp(&cfg->col, &dev->cfg.col, sizeof(color_setup_t))) {
+    if (force_update || (memcmp(&cfg->col, &dev->cfg.col, sizeof(color_setup_t)))) {
         isl_writereg(dev, ISL_R_GAIN_MSB, (cfg->col.r_gain >> 2));
         isl_writereg(dev, ISL_R_GAIN_LSB, (cfg->col.r_gain << 6));
         isl_writereg(dev, ISL_G_GAIN_MSB, (cfg->col.g_gain >> 2));
@@ -339,46 +339,46 @@ void isl_update_config(isl51002_dev *dev, isl51002_config *cfg) {
         isl_writereg(dev, ISL_B_OFFSET_LSB, (cfg->col.b_offs << 6));
     }
 
-    if (cfg->pre_coast != dev->cfg.pre_coast)
+    if (force_update || (cfg->pre_coast != dev->cfg.pre_coast))
         isl_writereg(dev, ISL_HPLL_PRECOAST, cfg->pre_coast);
-    if (cfg->post_coast != dev->cfg.post_coast)
+    if (force_update || (cfg->post_coast != dev->cfg.post_coast))
         isl_writereg(dev, ISL_HPLL_POSTCOAST, cfg->post_coast);
-    if (cfg->clamp_str != dev->cfg.clamp_str)
+    if (force_update || (cfg->clamp_str != dev->cfg.clamp_str))
         isl_writereg(dev, ISL_CLAMP_STR, (cfg->clamp_str<<4) | 0x8);
-    if (cfg->clamp_alc_start != dev->cfg.clamp_alc_start) {
+    if (force_update || (cfg->clamp_alc_start != dev->cfg.clamp_alc_start)) {
         isl_writereg(dev, ISL_ABLC_START_MSB, (cfg->clamp_alc_start >> 8));
         isl_writereg(dev, ISL_ABLC_START_LSB, (cfg->clamp_alc_start & 0xff));
     }
-    if (cfg->clamp_alc_width != dev->cfg.clamp_alc_width)
+    if (force_update || (cfg->clamp_alc_width != dev->cfg.clamp_alc_width))
         isl_writereg(dev, ISL_CLAMPWIDTH, cfg->clamp_alc_width);
-    if (cfg->coast_clamp != dev->cfg.coast_clamp) {
+    if (force_update || (cfg->coast_clamp != dev->cfg.coast_clamp)) {
         val = isl_readreg(dev, ISL_AFECTRL) & ~(1<<2);
         isl_writereg(dev, ISL_AFECTRL, val | (cfg->coast_clamp<<2));
     }
-    if (cfg->alc_enable != dev->cfg.alc_enable) {
+    if (force_update || (cfg->alc_enable != dev->cfg.alc_enable)) {
         val = isl_readreg(dev, ISL_ABLCCFG) & ~(1<<0);
         isl_writereg(dev, ISL_ABLCCFG, val | !cfg->alc_enable);
     }
-    if (cfg->alc_h_filter != dev->cfg.alc_h_filter) {
+    if (force_update || (cfg->alc_h_filter != dev->cfg.alc_h_filter)) {
         val = isl_readreg(dev, ISL_ABLCCFG) & ~(3<<2);
         isl_writereg(dev, ISL_ABLCCFG, val | (cfg->alc_h_filter<<2));
     }
-    if (cfg->alc_v_filter != dev->cfg.alc_v_filter) {
+    if (force_update || (cfg->alc_v_filter != dev->cfg.alc_v_filter)) {
         val = isl_readreg(dev, ISL_ABLCCFG) & ~(7<<4);
         isl_writereg(dev, ISL_ABLCCFG, val | (cfg->alc_v_filter<<4));
     }
-    if (cfg->hsync_vth != dev->cfg.hsync_vth)
+    if (force_update || (cfg->hsync_vth != dev->cfg.hsync_vth))
         isl_writereg(dev, ISL_HSYNC_VTH, (cfg->hsync_vth<<4) | cfg->hsync_vth);
-    if (cfg->sog_vth != dev->cfg.sog_vth)
+    if (force_update || (cfg->sog_vth != dev->cfg.sog_vth))
         isl_writereg(dev, ISL_SOG_VTH, cfg->sog_vth);
-    if (cfg->sync_gf != dev->cfg.sync_gf) {
+    if (force_update || (cfg->sync_gf != dev->cfg.sync_gf)) {
         val = isl_readreg(dev, ISL_SYNCCFG) & ~(0x0f<<0);
         isl_writereg(dev, ISL_SYNCCFG, val | cfg->sync_gf);
     }
-    if (cfg->pll_loop_gain != dev->cfg.pll_loop_gain)
+    if (force_update || (cfg->pll_loop_gain != dev->cfg.pll_loop_gain))
         isl_writereg(dev, ISL_PLL_TUNE, 0x49+cfg->pll_loop_gain);
 
-    if (cfg->afe_bw != dev->cfg.afe_bw) {
+    if (force_update || (cfg->afe_bw != dev->cfg.afe_bw)) {
         if (!cfg->afe_bw) {
             isl_writereg(dev, ISL_AFEBW, dev->auto_bw_sel);
             printf("AFE BW auto-set to %uMHz\n\n", afe_bw_arr[dev->auto_bw_sel]);
