@@ -42,8 +42,8 @@ typedef struct {
     uint8_t pre_coast;
     uint8_t post_coast;
     uint8_t clamp_str;
-    uint16_t clamp_alc_start;
-    uint8_t clamp_alc_width;
+    uint8_t clamp_alc_start_pct_x10;
+    uint8_t clamp_alc_width_pct_x10;
     uint8_t coast_clamp;
     uint8_t alc_enable;
     uint8_t alc_h_filter;
@@ -91,6 +91,7 @@ typedef struct {
     uint32_t xtal_freq;
     uint8_t powered_on;
     uint8_t sync_active;
+    uint8_t sync_trilevel;
     uint8_t auto_bw_sel;
     isl51002_config cfg;
     isl51002_sync_status ss;
@@ -130,6 +131,8 @@ int isl_check_activity(isl51002_dev *dev, isl_input_t input, video_sync syncinpu
 int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame);
 
 void isl_source_setup(isl51002_dev *dev, uint16_t h_samplerate);
+
+void isl_set_clamp(isl51002_dev *dev, uint16_t clamp_alc_start_pct_x10, uint8_t clamp_alc_width_pct_x10, uint8_t sync_trilevel) ;
 
 uint16_t isl_get_pll_htotal(isl51002_dev *dev);
 

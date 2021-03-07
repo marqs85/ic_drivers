@@ -33,8 +33,8 @@ const isl51002_config isl_cfg_default = {
     .pre_coast = 4,
     .post_coast = 4,
     .clamp_str = 7,
-    .clamp_alc_start = 2,
-    .clamp_alc_width = 16,
+    .clamp_alc_start_pct_x10 = 7,
+    .clamp_alc_width_pct_x10 = 20,
     .coast_clamp = 1,
     .alc_enable = 1,
     .alc_h_filter = 0,
@@ -202,7 +202,7 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
         isl_h_period_change ||
         (pcnt_frame < (dev->ss.pcnt_frame - PCNT_TOLERANCE)) ||
         (pcnt_frame > (dev->ss.pcnt_frame + PCNT_TOLERANCE)) ||
-        ((sync_params & 0x2c) != (dev->ss.sync_params & 0x2c))))
+        ((sync_params & 0x3c) != (dev->ss.sync_params & 0x3c))))
     {
         mode_changed = 1;
 
@@ -229,6 +229,28 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
 void isl_source_setup(isl51002_dev *dev, uint16_t h_samplerate) {
     isl_writereg(dev, ISL_HPLL_HTOTAL_MSB, (h_samplerate >> 8));
     isl_writereg(dev, ISL_HPLL_HTOTAL_LSB, (h_samplerate & 0xff));
+
+    isl_set_clamp(dev, dev->cfg.clamp_alc_start_pct_x10, dev->cfg.clamp_alc_width_pct_x10, dev->sync_trilevel);
+}
+
+void isl_set_clamp(isl51002_dev *dev, uint16_t clamp_alc_start_pct_x10, uint8_t clamp_alc_width_pct_x10, uint8_t sync_trilevel) {
+    uint16_t clamp_alc_start_px;
+    uint8_t clamp_alc_width_px;
+    uint16_t h_samplerate = isl_get_pll_htotal(dev);
+
+    clamp_alc_start_px = ((uint32_t)clamp_alc_start_pct_x10*h_samplerate)/1000;
+    if (sync_trilevel)
+        clamp_alc_start_px += 48;
+
+    clamp_alc_width_px = ((uint32_t)clamp_alc_width_pct_x10*h_samplerate)/1000;
+
+    isl_writereg(dev, ISL_ABLC_START_MSB, (clamp_alc_start_px >> 8));
+    isl_writereg(dev, ISL_ABLC_START_LSB, (clamp_alc_start_px & 0xff));
+
+    isl_writereg(dev, ISL_CLAMPWIDTH, clamp_alc_width_px);
+
+    printf("Clamp offset: %upx\n", clamp_alc_start_px);
+    printf("Clamp width: %upx\n", clamp_alc_width_px);
 }
 
 uint16_t isl_get_pll_htotal(isl51002_dev *dev) {
@@ -345,12 +367,9 @@ void isl_update_config(isl51002_dev *dev, isl51002_config *cfg, int force_update
         isl_writereg(dev, ISL_HPLL_POSTCOAST, cfg->post_coast);
     if (force_update || (cfg->clamp_str != dev->cfg.clamp_str))
         isl_writereg(dev, ISL_CLAMP_STR, (cfg->clamp_str<<4) | 0x8);
-    if (force_update || (cfg->clamp_alc_start != dev->cfg.clamp_alc_start)) {
-        isl_writereg(dev, ISL_ABLC_START_MSB, (cfg->clamp_alc_start >> 8));
-        isl_writereg(dev, ISL_ABLC_START_LSB, (cfg->clamp_alc_start & 0xff));
+    if (force_update || (cfg->clamp_alc_start_pct_x10 != dev->cfg.clamp_alc_start_pct_x10) || (cfg->clamp_alc_width_pct_x10 != dev->cfg.clamp_alc_width_pct_x10)) {
+        isl_set_clamp(dev, cfg->clamp_alc_start_pct_x10, cfg->clamp_alc_width_pct_x10, dev->sync_trilevel);
     }
-    if (force_update || (cfg->clamp_alc_width != dev->cfg.clamp_alc_width))
-        isl_writereg(dev, ISL_CLAMPWIDTH, cfg->clamp_alc_width);
     if (force_update || (cfg->coast_clamp != dev->cfg.coast_clamp)) {
         val = isl_readreg(dev, ISL_AFECTRL) & ~(1<<2);
         isl_writereg(dev, ISL_AFECTRL, val | (cfg->coast_clamp<<2));
