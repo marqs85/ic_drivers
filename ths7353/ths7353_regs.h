@@ -20,8 +20,9 @@
 #ifndef THS7353_REGS_H_
 #define THS7353_REGS_H_
 
-#define THS_CH1 0x01
+// defined in ths_channel_t
+/*#define THS_CH1 0x01
 #define THS_CH2 0x02
-#define THS_CH3 0x03
+#define THS_CH3 0x03*/
 
 #endif /* THS7353_REGS_H_ */

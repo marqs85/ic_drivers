@@ -28,6 +28,7 @@
 typedef struct {
     uint32_t i2cm_base;
     uint8_t i2c_addr;
+    uint8_t chmask;
 } ths7353_dev;
 
 typedef enum {
@@ -43,31 +44,46 @@ typedef enum {
     THS_STANDBY = 2
 } ths_input_t;
 
-#define THS_LPF_9MHZ 0x00
-#define THS_LPF_16MHZ 0x01
-#define THS_LPF_35MHZ 0x02
-#define THS_LPF_BYPASS 0x03
-#define THS_LPF_DEFAULT 0x3
-#define THS_LPF_MASK 0x18
-#define THS_LPF_OFFS 3
+typedef enum {
+    THS_BIAS_DC        = 2,
+    THS_BIAS_DC_OFFSET = 3,
+    THS_BIAS_AC        = 4,
+    THS_BIAS_STC_LOW   = 5,
+    THS_BIAS_STC_MID   = 6,
+    THS_BIAS_STC_HIGH  = 7,
+} ths_biasmode_t;
 
-#define THS_SRC_MASK 0x20
-#define THS_SRC_OFFS 5
 
-#define THS_MODE_MASK   0x7
-#define THS_MODE_OFFS   0
+#define THS_STC_LPF_OFFS    6
+#define THS_STC_LPF_MASK    0xc0
+#define THS_STC_LPF_0P5MHZ  0
+#define THS_STC_LPF_2P5MHZ  1
+#define THS_STC_LPF_5MHZ    2
 
+#define THS_SRC_OFFS        5
+#define THS_SRC_MASK        0x20
+
+#define THS_LPF_OFFS        3
+#define THS_LPF_MASK        0x18
+#define THS_LPF_9MHZ        0x00
+#define THS_LPF_16MHZ       0x01
+#define THS_LPF_35MHZ       0x02
+#define THS_LPF_BYPASS      0x03
+#define THS_LPF_DEFAULT     0x3
+
+#define THS_MODE_OFFS       0
+#define THS_MODE_MASK       0x7
 #define THS_MODE_DISABLE    0
 #define THS_MODE_AVMUTE     1
-#define THS_MODE_AC_BIAS    4
-#define THS_MODE_STC        6   //mid bias
 
 int ths7353_init(ths7353_dev *dev);
 
 void ths7353_set_lpf(ths7353_dev *dev, uint8_t val);
 
+void ths7353_set_input_biasmode(ths7353_dev *dev, ths_biasmode_t mode, uint8_t lpf, uint8_t stc_lpf);
+
 void ths7353_source_sel(ths7353_dev *dev, ths_input_t input, uint8_t lpf);
 
-void ths7353_singlech_source_sel(ths7353_dev *dev, ths_channel_t ch, ths_input_t input, uint8_t lpf);
+void ths7353_singlech_source_sel(ths7353_dev *dev, ths_channel_t ch, ths_input_t input, ths_biasmode_t mode, uint8_t lpf, uint8_t stc_lpf);
 
 #endif /* THS7353_H_ */
