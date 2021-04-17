@@ -269,13 +269,16 @@ void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch o
     return;
 }
 
-int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clksrc_hz, uint8_t mult, uint8_t outdiv) {
+int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint8_t mult, uint8_t outdiv) {
     si5351_pll_msn_config_t pll_msn_config;;
     uint32_t fbdiv_x100, msn_a, msn_p1, ms_a, ms_p1;
+    uint32_t clksrc_hz;
     uint8_t clkin_div, clkin_div_regval;
     uint8_t divby4=0;
     uint8_t optim_ratio;
     int pll_rst_needed;
+
+    clksrc_hz = (clksrc == SI_CLKIN) ? clkin_hz : dev->xtal_freq;
 
     if ((mult == 0) || (clksrc_hz < SI_CLKIN_MIN_FREQ) || (clksrc_hz*mult > SI_MAX_OUTPUT_FREQ)) {
         printf("ERROR: Si5351 max. output freq exceeded\n\n");
