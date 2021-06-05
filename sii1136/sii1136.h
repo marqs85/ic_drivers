@@ -51,7 +51,7 @@ void sii1136_get_default_cfg(sii1136_config *cfg);
 
 void sii1136_enable_power(sii1136_dev *dev, int enable);
 
-void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg);
+void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val);
 
 void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode);
 

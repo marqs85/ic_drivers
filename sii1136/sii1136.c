@@ -85,7 +85,7 @@ int sii1136_init(sii1136_dev *dev) {
     // Enable interrupts
     //sii1136_writereg(dev, SII1136_IRQ_ENABLE, 0xFB);
 
-    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg);
+    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
     sii1136_set_tx_mode(dev, dev->cfg.tx_mode);
 
     return 0;
@@ -168,55 +168,50 @@ void sii1136_update_infoframe(sii1136_dev *dev, uint8_t type) {
     }
 }
 
-void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg) {
+void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val) {
     int i;
-    uint8_t fs_val=0, ca_val=0, cc_val=1;
     uint8_t regval;
 
     // Set audio mode (also selects correct register map) and mute
     sii1136_writereg(dev, SII1136_AUDIOMODE, (((fmt==AUDIO_I2S) ? 2 : 1) << 6) | (1<<5) | (1<<4));
 
-    if (fmt == AUDIO_I2S) {
-        switch (i2s_fs) {
-            case IEC60958_FS_48KHZ:
-                fs_val = 0x2;
-                break;
-            case IEC60958_FS_96KHZ:
-                fs_val = 0xa;
-                break;
-            case IEC60958_FS_192KHZ:
-                fs_val = 0xe;
-                break;
-            default:
-                break;
-        }
+    if (fmt == AUDIO_SPDIF) {
+        cc_val = CC_HDR;
+        ca_val = 0;
+    } else {
+        if (cc_val == CC_2CH) {
+            switch (i2s_stereo_cfg) {
+                case I2S_2CH_STEREO:
+                    ca_val = CA_2p0;
+                    break;
+                case I2S_4CH_STEREO_4p0:
+                    cc_val = CC_4CH;
+                    ca_val = CA_4p0;
+                    break;
+                case I2S_4CH_STEREO_5p1:
+                    cc_val = CC_6CH;
+                    ca_val = CA_5p1;
+                    break;
+                case I2S_4CH_STEREO_7p1:
+                    cc_val = CC_8CH;
+                    ca_val = CA_7p1;
+                    break;
+                default:
+                    break;
+            }
 
-        switch (i2s_stereo_cfg) {
-            case I2S_2CH_STEREO:
-                ca_val = 0x00;
-                cc_val = 0x1;
-                break;
-            case I2S_4CH_STEREO_4p0:
-                ca_val = 0x08;
-                cc_val = 0x3;
-                break;
-            case I2S_4CH_STEREO_5p1:
-                ca_val = 0x0b;
-                cc_val = 0x5;
-                break;
-            case I2S_4CH_STEREO_7p1:
-                ca_val = 0x13;
-                cc_val = 0x7;
-                break;
-            default:
-                break;
+            // Set I2S FIFO mapping (quad stereo)
+            // SiI1136 does not seem to map SP.X bits correctly based on FIFO usage, only 2ch and 8ch modes are usable
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x80);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, (i2s_stereo_cfg>I2S_2CH_STEREO) ? 0x91 : 0x11);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, (i2s_stereo_cfg>I2S_2CH_STEREO) ? 0x82 : 0x02);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, (i2s_stereo_cfg>I2S_2CH_STEREO) ? 0xB3 : 0x33);
+        } else {
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x80);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x91);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0xA2);
+            sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0xB3);
         }
-
-        // Set I2S FIFO mapping (quad stereo)
-        sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x80);
-        sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x01);
-        sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x82);
-        sii1136_writereg(dev, SII1136_I2S_IN_MAP, 0x03);
 
         // Disable copyright protection
         sii1136_writereg(dev, SII1136_I2S_STAT, (1<<2));
@@ -228,7 +223,7 @@ void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
         sii1136_writereg(dev, SII1136_I2S_CHNUM, 0x00);
 
         // Clock accuracy and samplerate
-        sii1136_writereg(dev, SII1136_I2S_ACC_SFS, fs_val);
+        sii1136_writereg(dev, SII1136_I2S_ACC_SFS, i2s_fs);
 
         // 24-bit I2S audio
         sii1136_writereg(dev, SII1136_I2S_OFS_LEN, 0x0B);
@@ -322,7 +317,7 @@ void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg) {
             (cfg->i2s_stereo_cfg != dev->cfg.i2s_stereo_cfg) ||
             (cfg->audio_cc_val != dev->cfg.audio_cc_val) ||
             (cfg->audio_ca_val != dev->cfg.audio_ca_val))
-            sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg);
+            sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
 
         memcpy(&dev->cfg, cfg, sizeof(sii1136_config));
     }
