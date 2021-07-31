@@ -54,8 +54,8 @@ static void pcm186x_reset(pcm186x_dev *dev) {
 void pcm186x_source_sel(pcm186x_dev *dev, pcm_input_t input) {
     uint8_t adc_ch = 1<<input;
 
-    pcm186x_writereg(dev, PCM186X_ADC1L, adc_ch);
-    pcm186x_writereg(dev, PCM186X_ADC1R, adc_ch);
+    pcm186x_writereg(dev, PCM186X_ADC1L, (1<<6)|adc_ch);
+    pcm186x_writereg(dev, PCM186X_ADC1R, (1<<6)|adc_ch);
 }
 
 void pcm186x_set_gain(pcm186x_dev *dev, int8_t db_gain) {
@@ -120,10 +120,10 @@ int pcm186x_init(pcm186x_dev *dev)
 
     pcm186x_set_samplerate(dev, PCM_48KHZ);
 
-    // Use IIR filter
-    pcm186x_writereg(dev, PCM186X_DSP_CTRL, 0x30);
-
     pcm186x_enable_power(dev, 0);
+
+    // Use IIR filter
+    pcm186x_writereg(dev, PCM186X_DSP_CTRL, 0xB0);
 
     memcpy(&dev->cfg, &pcm_cfg_default, sizeof(pcm186x_config));
 
