@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "sysconfig.h"
-#include "video_modes.h"
 #include "isl51002_regs.h"
 
 //#define ISL_SYNC_MEAS
@@ -103,6 +102,13 @@ typedef enum {
     ISL_CH1 = 1,
     ISL_CH2 = 2
 } isl_input_t;
+
+typedef enum {
+    FORMAT_RGBS = 0,
+    FORMAT_RGBHV = 1,
+    FORMAT_RGsB = 2,
+    FORMAT_YPbPr = 3
+} video_format;
 
 typedef enum {
     SYNC_SOG = (1<<0),
