@@ -28,7 +28,7 @@
 #define SI_VCO_CENTER_FREQ  750000000UL
 #define SI_CLKIN_MIN_FREQ   10000000UL
 #define SI_CLKIN_MAX_FREQ   40000000UL
-#define SI_MAX_OUTPUT_FREQ  200000000UL
+#define SI_MAX_OUTPUT_FREQ  300000000UL
 
 typedef enum {
     SI_XTAL = 0,
@@ -76,7 +76,7 @@ typedef struct {
     uint8_t divby4;
 } si5351_ms_config_t;
 
-void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, si5351_ms_config_t *ms_conf);
+int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint32_t mult_numer, uint32_t mult_denom, si5351_ms_config_t *ms_conf);
 
 int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint8_t mult, uint8_t outdiv);
 

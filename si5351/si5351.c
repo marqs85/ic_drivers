@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "si5351.h"
+#include "utils.h"
 #include "i2c_opencores.h"
 
 si5351c_revb_register_t const si5351c_revb_registers[] =
@@ -242,14 +243,93 @@ static void si5351_set_output_divider(si5351_dev *dev, si5351_out_ch out_ch, uin
     }
 }
 
-void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, si5351_ms_config_t *ms_conf) {
-    si5351_pll_msn_config_t pll_msn_config = {ms_conf->msn_p1, ms_conf->msn_p2, ms_conf->msn_p3};
+int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint32_t mult_numer, uint32_t mult_denom, si5351_ms_config_t *ms_conf) {
+    si5351_ms_config_t ms_conf_gen = {0};
+    si5351_pll_msn_config_t pll_msn_config;
+    uint32_t outdiv_x100, msn_a, msn_b, msn_c, ms_a;
+    uint32_t clksrc_hz, clkout_hz;
+    uint32_t frac_gcd;
+    uint8_t clkin_div;
+    uint8_t optim_ratio;
     int pll_rst_needed;
+
+    // Generate multisynth config if one is not given
+    if (!ms_conf) {
+        clksrc_hz = (clksrc == SI_CLKIN) ? clkin_hz : dev->xtal_freq;
+        clkin_div = (clksrc_hz / SI_CLKIN_MAX_FREQ) + 1;
+        if (clkin_div > 4) {
+            clkin_div = 8;
+            ms_conf_gen.clkin_div_regval = 3;
+        } else if (clkin_div > 2) {
+            clkin_div = 4;
+            ms_conf_gen.clkin_div_regval = 2;
+        } else {
+            ms_conf_gen.clkin_div_regval = clkin_div-1;
+        }
+
+        if (!mult_numer || !mult_denom) {
+            printf("ERROR: Si5351 invalid frac numerator/denominator\n\n");
+            return -1;
+        }
+
+        clkout_hz = (((clkin_hz/100000)*mult_numer)/mult_denom)*100000;
+        printf("Si5351 calculated output freq: %luHz\n\n", clkout_hz);
+
+        if ((clksrc_hz < SI_CLKIN_MIN_FREQ) || (clkout_hz > SI_MAX_OUTPUT_FREQ)) {
+            printf("ERROR: Si5351 input/output freq range exceeded\n\n");
+            return -1;
+        }
+
+        // use even outdiv for lowest jitter
+        outdiv_x100 = (SI_VCO_CENTER_FREQ / (clkout_hz / 100));
+        ms_a = 2*((outdiv_x100+100)/200);
+        if ((ms_a < 4) || (ms_a > 2048)) {
+            printf("ERROR: Si5351 out of range ms_a: %lu\n\n", ms_a);
+            return -1;
+        }
+
+        if ((clkout_hz >= 150000000UL) || (ms_a == 4)) {
+            ms_conf_gen.divby4 = 3;
+            ms_a = 4;
+        } else {
+            ms_conf_gen.ms_p1 = 128*ms_a - 512;
+        }
+        ms_conf_gen.ms_p3 = 1;
+
+        mult_numer = clkin_div*ms_a*mult_numer;
+        frac_gcd = gcd(mult_numer, mult_denom);
+        mult_numer /= frac_gcd;
+        mult_denom /= frac_gcd;
+
+        msn_a = mult_numer / mult_denom;
+        msn_b = mult_numer % mult_denom;
+        msn_c = mult_denom;
+
+        if (msn_c > 1048575) {
+            printf("ERROR: Si5351 out of range msn_c: %lu\n\n", msn_c);
+            return -1;
+        }
+
+        ms_conf_gen.msn_p1 = 128*msn_a + ((128*msn_b)/msn_c) - 512;
+        ms_conf_gen.msn_p2 = 128*msn_b - msn_c*((128*msn_b)/msn_c);
+        ms_conf_gen.msn_p3 = msn_c;
+
+        printf("Si5351 VCO freq: %luMHz (srcdiv=%u) (ms_a=%lu)\n\n", (clkout_hz*ms_a)/1000000, clkin_div, ms_a);
+        printf("Si5351 generated ms params msn_a=%lu, msn_b=%lu, msn_c=%lu, ms_a=%lu\n", msn_a, msn_b, msn_c, ms_a);
+        printf("Si5351 generated cfg: %lu, %lu, %lu,  %lu, %lu, %lu,  %u, %u, %u\n\n", ms_conf_gen.msn_p1, ms_conf_gen.msn_p2, ms_conf_gen.msn_p3,
+                                                                                       ms_conf_gen.ms_p1, ms_conf_gen.ms_p2, ms_conf_gen.ms_p3,
+                                                                                       ms_conf_gen.clkin_div_regval, ms_conf_gen.clkin_div_regval, ms_conf_gen.divby4);
+
+        ms_conf = &ms_conf_gen;
+    }
 
     //set PLL source and clockdiv
     si5351_configure_pll(dev, pll_ch, clksrc, ms_conf->clkin_div_regval);
 
     // set PLL and output multisynth
+    pll_msn_config.p1 = ms_conf->msn_p1;
+    pll_msn_config.p2 = ms_conf->msn_p2;
+    pll_msn_config.p3 = ms_conf->msn_p3;
     pll_rst_needed = si5351_set_pll_fb_multisynth(dev, pll_ch, &pll_msn_config);
     si5351_set_output_multisynth(dev, out_ch, ms_conf->ms_p1, ms_conf->ms_p2, ms_conf->ms_p3, ms_conf->divby4);
 
@@ -266,11 +346,11 @@ void si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch o
     // Enable clock output
     si5351_enable_output(dev, out_ch);
 
-    return;
+    return 0;
 }
 
 int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint8_t mult, uint8_t outdiv) {
-    si5351_pll_msn_config_t pll_msn_config;;
+    si5351_pll_msn_config_t pll_msn_config;
     uint32_t fbdiv_x100, msn_a, msn_p1, ms_a, ms_p1;
     uint32_t clksrc_hz;
     uint8_t clkin_div, clkin_div_regval;
@@ -281,7 +361,7 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
     clksrc_hz = (clksrc == SI_CLKIN) ? clkin_hz : dev->xtal_freq;
 
     if ((mult == 0) || (clksrc_hz < SI_CLKIN_MIN_FREQ) || (clksrc_hz*mult > SI_MAX_OUTPUT_FREQ)) {
-        printf("ERROR: Si5351 max. output freq exceeded\n\n");
+        printf("ERROR: Si5351 input/output freq range exceeded\n\n");
         return -1;
     }
 
