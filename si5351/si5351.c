@@ -272,7 +272,12 @@ int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch ou
             return -1;
         }
 
-        clkout_hz = (((clkin_hz/100000)*mult_numer)/mult_denom)*100000;
+        // Initial reduction
+        frac_gcd = gcd(mult_numer, mult_denom);
+        mult_numer /= frac_gcd;
+        mult_denom /= frac_gcd;
+
+        clkout_hz = (((clkin_hz*10)/mult_denom)*mult_numer)/10;
         printf("Si5351 calculated output freq: %luHz\n\n", clkout_hz);
 
         if ((clksrc_hz < SI_CLKIN_MIN_FREQ) || (clkout_hz > SI_MAX_OUTPUT_FREQ)) {
@@ -283,12 +288,12 @@ int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch ou
         // use even outdiv for lowest jitter
         outdiv_x100 = (SI_VCO_CENTER_FREQ / (clkout_hz / 100));
         ms_a = 2*((outdiv_x100+100)/200);
-        if ((ms_a < 4) || (ms_a > 2048)) {
+        if (ms_a >= 2048) {
             printf("ERROR: Si5351 out of range ms_a: %lu\n\n", ms_a);
             return -1;
         }
 
-        if ((clkout_hz >= 150000000UL) || (ms_a == 4)) {
+        if ((clkout_hz >= 150000000UL) || (ms_a <= 4)) {
             ms_conf_gen.divby4 = 3;
             ms_a = 4;
         } else {
