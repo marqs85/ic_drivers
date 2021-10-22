@@ -267,7 +267,17 @@ void isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase) {
         isl_writereg(dev, ISL_PHASEADJCMD, 0x03);
     } else {
         isl_writereg(dev, ISL_HPLL_PHASE, sampler_phase-1);
-        printf("Phase set to %u deg\n", (((sampler_phase-1)*360)+16)/32);
+        printf("Phase set to %u deg\n", ((sampler_phase-1)*5625)/1000);
+    }
+}
+
+uint8_t isl_get_sampler_phase(isl51002_dev *dev) {
+    if (dev->powered_on && dev->sync_active) {
+        while (isl_readreg(dev, ISL_PHASEADJSTATUS)) {}
+
+        return isl_readreg(dev, ISL_HPLL_PHASE);
+    } else {
+        return 0;
     }
 }
 

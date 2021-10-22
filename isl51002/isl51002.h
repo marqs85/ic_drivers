@@ -146,6 +146,8 @@ void isl_de_adj(isl51002_dev *dev);
 
 void isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase);
 
+uint8_t isl_get_sampler_phase(isl51002_dev *dev);
+
 void isl_set_afe_bw(isl51002_dev *dev, uint32_t dotclk_hz);
 
 uint16_t isl_get_afe_bw(isl51002_dev *dev, uint8_t afe_bw);
