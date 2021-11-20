@@ -141,6 +141,7 @@ void adv761x_init(adv761x_dev *dev) {
 
 void adv761x_enable_power(adv761x_dev *dev, int enable) {
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_0C, (!enable)<<5);
+    dev->powered_on = enable;
 }
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng) {

@@ -47,10 +47,10 @@ typedef struct {
     uint16_t v_active;
     uint16_t h_total;
     uint16_t v_total;
-    uint8_t h_backporch;
-    uint8_t v_backporch;
-    uint8_t h_synclen;
-    uint8_t v_synclen;
+    uint16_t h_backporch;
+    uint16_t v_backporch;
+    uint16_t h_synclen;
+    uint16_t v_synclen;
     uint8_t interlace_flag;
     uint8_t h_polarity;
     uint8_t v_polarity;
@@ -78,6 +78,7 @@ typedef struct {
     uint32_t pclk_hz;
     uint32_t pixelrep;
     uint8_t hdmi_mode;
+    uint8_t powered_on;
     HDMI_audio_sample_type_t audio_sample_type;
     adv761x_config cfg;
 } adv761x_dev;
