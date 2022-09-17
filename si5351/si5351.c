@@ -277,7 +277,7 @@ int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch ou
         mult_numer /= frac_gcd;
         mult_denom /= frac_gcd;
 
-        clkout_hz = (((clkin_hz*10)/mult_denom)*mult_numer)/10;
+        clkout_hz = (((clksrc_hz*10)/mult_denom)*mult_numer)/10;
         printf("Si5351 calculated output freq: %luHz\n\n", clkout_hz);
 
         if ((clksrc_hz < SI_CLKIN_MIN_FREQ) || (clkout_hz > SI_MAX_OUTPUT_FREQ)) {
