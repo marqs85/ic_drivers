@@ -145,7 +145,7 @@ int isl_check_activity(isl51002_dev *dev, isl_input_t input, video_sync syncinpu
         act |= SYNC_CS;
     if ((sync_activity & 0x03) == 0x03)
         act |= SYNC_HV;
-    if ((sync_activity & 0x0c) == 0x08)
+    if ((sync_activity & 0x0c) != 0x00)
         act |= SYNC_SOG;
 
     sync_active = !!(act & syncinput);
