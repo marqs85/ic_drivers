@@ -26,7 +26,8 @@
 #define PCLK_HZ_TOLERANCE 1000000UL
 
 const adv761x_config adv761x_cfg_default = {
-    .default_rgb_range = ADV761X_RGB_LIMITED
+    .default_rgb_range = ADV761X_RGB_LIMITED,
+    .pixelderep_mode = 0
 };
 
 uint8_t adv761x_get_baseaddr(adv761x_dev *dev, adv761x_reg_map map) {
@@ -133,6 +134,9 @@ void adv761x_init(adv761x_dev *dev) {
     // set default RGB range
     adv761x_set_default_rgb_range(dev, dev->cfg.default_rgb_range);
 
+    // set RX pixelrep mode
+    adv761x_set_pixelderep(dev, dev->cfg.pixelderep_mode);
+
     // allow compressed audio
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_AUDIO_MUTE_MSK, 0x1f);
 
@@ -146,6 +150,10 @@ void adv761x_enable_power(adv761x_dev *dev, int enable) {
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng) {
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_47H, ((1<<2)|(rng<<1)));
+}
+
+void adv761x_set_pixelderep(adv761x_dev *dev, uint8_t pixelderep_mode) {
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_DEREP, pixelderep_mode ? ((1<<6)|(1<<4)|(pixelderep_mode-1)) : (1<<6));
 }
 
 void adv761x_set_spdif_mux(adv761x_dev *dev, int enable) {
@@ -298,6 +306,8 @@ void adv761x_update_config(adv761x_dev *dev, adv761x_config *cfg) {
 
     if (cfg->default_rgb_range != dev->cfg.default_rgb_range)
         adv761x_set_default_rgb_range(dev, cfg->default_rgb_range);
+    if (cfg->pixelderep_mode != dev->cfg.pixelderep_mode)
+        adv761x_set_pixelderep(dev, cfg->pixelderep_mode);
     if (audio_sample_type != dev->audio_sample_type) {
         adv761x_set_spdif_mux(dev, (audio_sample_type == IEC60958_SAMPLE_NONPCM));
         dev->audio_sample_type = audio_sample_type;

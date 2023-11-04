@@ -76,6 +76,7 @@
 #define ADV761X_IEC60958_DATA_3     0x38
 #define ADV761X_IEC60958_DATA_4     0x39
 #define ADV761X_IEC60958_DATA_5     0x3A
+#define ADV761X_DEREP               0x41
 #define ADV761X_HDMI_REG_47H        0x47
 #define ADV761X_TMDSFREQ_1          0x51
 #define ADV761X_TMDSFREQ_2          0x52
