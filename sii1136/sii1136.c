@@ -85,7 +85,6 @@ int sii1136_init(sii1136_dev *dev) {
     // Enable interrupts
     //sii1136_writereg(dev, SII1136_IRQ_ENABLE, 0xFB);
 
-    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
     sii1136_set_tx_mode(dev, dev->cfg.tx_mode);
 
     return 0;
@@ -100,8 +99,10 @@ void sii1136_enable_power(sii1136_dev *dev, int enable) {
         // Enter D0 mode (power up TX)
         sii1136_writereg(dev, SII1136_PWRCTRL, 0x00);
 
-        // Enable source termination
+        // Enable source termination and set TMDS PLL bandwidth, ref. Teraric HDMI-FMC manual
         sii1136_writereg(dev, SII1136_IDX_PAGE, 0x01);
+        sii1136_writereg(dev, SII1136_IDX_OFFSET, 0x82);
+        sii1136_writereg(dev, SII1136_IDX_RW, 0xa5);
         sii1136_writereg(dev, SII1136_IDX_OFFSET, 0x80);
         sii1136_writereg(dev, SII1136_IDX_RW, 0x24);
 
@@ -136,41 +137,48 @@ void sii1136_enable_tmds_output(sii1136_dev *dev, int enable) {
     sii1136_writereg(dev, SII1136_SYSCTRL, regval);
 }
 
-void sii1136_update_infoframe(sii1136_dev *dev, uint8_t type) {
+void sii1136_update_infoframe(sii1136_dev *dev, HDMI_infoframe_id_t type, HDMI_infoframe_ver_t ver, HDMI_infoframe_len_t len, uint8_t lastbyte) {
     uint8_t ifr_reg;
     uint8_t crc;
 
-    // Calculate CRC (type 0 is AVI Infoframe, type 1 is Audio Infoframe)
-    if (type == 0) {
-        crc = 0x82 + 0x02 + 13;
+    crc = ((1<<7) | type) + ver + len;
 
-        for (ifr_reg=0x0D; ifr_reg<=0x19; ifr_reg++)
+    // Calculate CRC, set type and commit last byte (triggers update)
+    if (type == HDMI_AVI_INFOFRAME_TYPE) {
+        for (ifr_reg=0x0D; ifr_reg<=0x18; ifr_reg++)
             crc += sii1136_readreg(dev, ifr_reg);
 
+        crc += lastbyte;
         crc = 0x100 - crc;
 
         sii1136_writereg(dev, 0x0C, crc);
 
         // commit update
-        sii1136_writereg(dev, 0x19, sii1136_readreg(dev, 0x19));
+        sii1136_writereg(dev, 0x19, lastbyte);
     } else {
-        crc = 0x84 + 0x01 + 10;
+        sii1136_writereg(dev, 0xBF, (type == HDMI_AUDIO_INFOFRAME_TYPE) ? 0xc2 : 0xc4);
+        sii1136_writereg(dev, 0xC0, ((1<<7) | type));
+        sii1136_writereg(dev, 0xC1, ver);
+        sii1136_writereg(dev, 0xC2, len);
 
-        for (ifr_reg=0xC4; ifr_reg<=0xCD; ifr_reg++)
+        for (ifr_reg=0xC4; ifr_reg<=0xC3+len; ifr_reg++)
             crc += sii1136_readreg(dev, ifr_reg);
 
+        crc += lastbyte;
         crc = 0x100 - crc;
 
         sii1136_writereg(dev, 0xC3, crc);
 
         // commit update
-        sii1136_writereg(dev, 0xCD, sii1136_readreg(dev, 0xCD));
+        sii1136_writereg(dev, 0xC3+len, lastbyte);
+        if ((type != HDMI_AUDIO_INFOFRAME_TYPE) && (0xC3+len != 0xDE))
+            sii1136_writereg(dev, 0xDE, 0x00);
     }
 }
 
 void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val) {
     int i;
-    uint8_t regval;
+    uint8_t regval, ifr_reg;
 
     // Set audio mode (also selects correct register map) and mute
     sii1136_writereg(dev, SII1136_AUDIOMODE, (((fmt==AUDIO_I2S) ? 2 : 1) << 6) | (1<<5) | (1<<4));
@@ -230,20 +238,32 @@ void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
     }
 
     // Setup audio infoframe
-    sii1136_writereg(dev, 0xBF, 0x82);
-    sii1136_writereg(dev, 0xC0, 0x84);
-    sii1136_writereg(dev, 0xC1, 0x01);
-    sii1136_writereg(dev, 0xC2, 10);
     sii1136_writereg(dev, 0xC4, cc_val);
+    sii1136_writereg(dev, 0xC5, 0x00);
+    sii1136_writereg(dev, 0xC6, 0x00);
     sii1136_writereg(dev, 0xC7, ca_val);
+    for (ifr_reg=0xC8; ifr_reg<0xC3+HDMI_AUDIO_INFOFRAME_LEN; ifr_reg++)
+        sii1136_writereg(dev, ifr_reg, 0x00);
 
     // Commit audio infoframe update
-    sii1136_update_infoframe(dev, 1);
+    sii1136_update_infoframe(dev, HDMI_AUDIO_INFOFRAME_TYPE, HDMI_AUDIO_INFOFRAME_VER, HDMI_AUDIO_INFOFRAME_LEN, 0x00);
 
     // Unmute audio
     regval = sii1136_readreg(dev, SII1136_AUDIOMODE);
     regval &= ~(1<<4);
     sii1136_writereg(dev, SII1136_AUDIOMODE, regval);
+}
+
+void sii1136_set_hdr(sii1136_dev *dev, uint8_t hdr_enable) {
+    uint8_t ifr_reg;
+
+    // Setup HDR Infoframe
+    sii1136_writereg(dev, 0xC4, hdr_enable ? 3 : 0);
+    for (ifr_reg=0xC5; ifr_reg<0xC3+HDMI_HDR_INFOFRAME_LEN; ifr_reg++)
+        sii1136_writereg(dev, ifr_reg, 0x00);
+
+    // Commit infoframe update
+    sii1136_update_infoframe(dev, HDMI_HDR_INFOFRAME_TYPE, HDMI_HDR_INFOFRAME_VER, HDMI_HDR_INFOFRAME_LEN, 0x00);
 }
 
 void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode) {
@@ -277,7 +297,11 @@ void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode) {
     sii1136_writereg(dev, 0x0F, (mode==TX_HDMI_RGB_LIM) ? 0x04 : 0x08); // Full/limited range RGB
 
     // Commit AVI infoframe update
-    sii1136_update_infoframe(dev, 0);
+    sii1136_update_infoframe(dev, HDMI_AVI_INFOFRAME_TYPE, HDMI_AVI_INFOFRAME_VER, HDMI_AVI_INFOFRAME_LEN, 0x00);
+
+    // Set other Infoframes
+    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
+    sii1136_set_hdr(dev, dev->cfg.hdr);
 }
 
 void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_infoframe, HDMI_vic_t vic, uint32_t pclk_hz) {
@@ -295,7 +319,7 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
     sii1136_writereg(dev, 0x11, pixelrep_infoframe);
 
     // Commit AVI infoframe update
-    sii1136_update_infoframe(dev, 0);
+    sii1136_update_infoframe(dev, HDMI_AVI_INFOFRAME_TYPE, HDMI_AVI_INFOFRAME_VER, HDMI_AVI_INFOFRAME_LEN, 0x00);
 
     // Enable TMDS output
     sii1136_enable_tmds_output(dev, 1);
@@ -318,6 +342,8 @@ void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg) {
             (cfg->audio_cc_val != dev->cfg.audio_cc_val) ||
             (cfg->audio_ca_val != dev->cfg.audio_ca_val))
             sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
+        if (cfg->hdr != dev->cfg.hdr)
+            sii1136_set_hdr(dev, cfg->hdr);
 
         memcpy(&dev->cfg, cfg, sizeof(sii1136_config));
     }

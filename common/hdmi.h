@@ -47,6 +47,32 @@ typedef enum {
 } HDMI_vic_t;
 
 typedef enum {
+    HDMI_AVI_INFOFRAME_TYPE = 0x02,
+    HDMI_SPD_INFOFRAME_TYPE = 0x03,
+    HDMI_AUDIO_INFOFRAME_TYPE = 0x04,
+    HDMI_MPEG_INFOFRAME_TYPE = 0x05,
+    HDMI_HDR_INFOFRAME_TYPE = 0x07,
+} HDMI_infoframe_id_t;
+
+typedef enum {
+    HDMI_VENDORSPEC_INFOFRAME_VER = 0x01,
+    HDMI_AVI_INFOFRAME_VER        = 0x02,
+    HDMI_SPD_INFOFRAME_VER        = 0x01,
+    HDMI_AUDIO_INFOFRAME_VER      = 0x01,
+    HDMI_MPEG_INFOFRAME_VER       = 0x01,
+    HDMI_HDR_INFOFRAME_VER        = 0x01,
+} HDMI_infoframe_ver_t;
+
+typedef enum {
+    HDMI_VENDORSPEC_INFOFRAME_LEN = 8,
+    HDMI_AVI_INFOFRAME_LEN        = 13,
+    HDMI_SPD_INFOFRAME_LEN        = 25,
+    HDMI_AUDIO_INFOFRAME_LEN      = 10,
+    HDMI_MPEG_INFOFRAME_LEN       = 10,
+    HDMI_HDR_INFOFRAME_LEN        = 26,
+} HDMI_infoframe_len_t;
+
+typedef enum {
     TX_1X   = 0,
     TX_2X   = 1,
     TX_4X   = 2
