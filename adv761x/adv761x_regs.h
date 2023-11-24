@@ -27,9 +27,12 @@
 #define ADV761X_IO_REG_03           0x03
 #define ADV761X_IO_REG_04           0x04
 #define ADV761X_IO_REG_0C           0x0C
+#define ADV761X_IO_REG_14           0x14
 #define ADV761X_IO_REG_15           0x15
+#define ADV761X_LLC_DLL             0x19
 #define ADV761X_HPA_REG1            0x20
 #define ADV761X_HPA_REG2            0x21
+#define ADV761X_IO_REG_33           0x33
 #define ADV761X_HDMI_LVL_RAW_STAT_3 0x6A
 #define ADV761X_CEC_SLAVEADDR       0xF4
 #define ADV761X_INFRM_SLAVEADDR     0xF5
@@ -85,6 +88,7 @@
 #define ADV761X_HDMI_REGISTER_02H   0x83
 
 // Infoframe map
+#define ADV761X_AVI_INFOFRAME_DB5   0x05
 #define ADV761X_AUD_INFOFRAME_DB1   0x1D
 #define ADV761X_AUD_INFOFRAME_DB2   0x1E
 #define ADV761X_AUD_INFOFRAME_DB3   0x1F

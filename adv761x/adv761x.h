@@ -77,7 +77,8 @@ typedef struct {
     uint8_t sync_active;
     adv761x_sync_status ss;
     uint32_t pclk_hz;
-    uint32_t pixelrep;
+    uint32_t pixelderep;
+    uint32_t pixelderep_ifr;
     uint8_t hdmi_mode;
     uint8_t powered_on;
     HDMI_audio_sample_type_t audio_sample_type;

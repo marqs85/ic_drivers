@@ -134,7 +134,7 @@ void adv761x_init(adv761x_dev *dev) {
     // set default RGB range
     adv761x_set_default_rgb_range(dev, dev->cfg.default_rgb_range);
 
-    // set RX pixelrep mode
+    // set RX pixelderep mode
     adv761x_set_pixelderep(dev, dev->cfg.pixelderep_mode);
 
     // allow compressed audio
@@ -205,7 +205,8 @@ int adv761x_check_activity(adv761x_dev *dev) {
         activity_change = 1;
         memset(&dev->ss, 0, sizeof(adv761x_sync_status));
         dev->pclk_hz = 0;
-        dev->pixelrep = 0;
+        dev->pixelderep = 0;
+        dev->pixelderep_ifr = 0;
 
         printf("advrx activity: 0x%lx\n", sync_activity);
     }
@@ -219,7 +220,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     int mode_changed = 0;
     adv761x_sync_status ss = {0};
     uint32_t pclk_hz;
-    uint8_t pixelrep, hdmi_mode;
+    uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
     uint8_t regval;
 
     ss.interlace_flag = !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & (1<<5));
@@ -248,19 +249,38 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_05H);
     ss.h_polarity = !!(regval & (1<<5));
     ss.v_polarity = !!(regval & (1<<4));
-    pixelrep = regval & 0xf;
     hdmi_mode = regval >> 7;
 
+    pixelderep = regval & 0xf;
+    if (hdmi_mode)
+        pixelderep_ifr = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_AVI_INFOFRAME_DB5) & 0xf;
+    else
+        pixelderep_ifr = 0;
+
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_2);
-    pclk_hz = (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_1) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128)) / ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_05H) & 0xf) + 1);
+    pclk_hz = (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_1) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128)) / (pixelderep + 1);
+
+    // Enforce manual de-repetition to ensure LLC is min. 13MHz as ADV761x output is not stable otherwise
+    if (dev->cfg.pixelderep_mode == 0) {
+        if ((pixelderep_ifr > 0) && (pclk_hz < 13000000UL))
+            adv761x_set_pixelderep(dev, 1);
+        else if ((pixelderep_ifr != pixelderep) && ((pclk_hz/(pixelderep_ifr+1)) > 13100000UL))
+            adv761x_set_pixelderep(dev, 0);
+    }
 
     if (memcmp(&ss, &dev->ss, sizeof(adv761x_sync_status)) ||
         (pclk_hz < (dev->pclk_hz - PCLK_HZ_TOLERANCE)) ||
         (pclk_hz > (dev->pclk_hz + PCLK_HZ_TOLERANCE)) ||
-        (pixelrep != dev->pixelrep) ||
+        (pixelderep != dev->pixelderep) ||
+        (pixelderep_ifr != dev->pixelderep_ifr) ||
         (hdmi_mode != dev->hdmi_mode))
     {
         mode_changed = 1;
+
+        if (pclk_hz <= 100000000UL)
+            adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_14, 0x6a);
+        else
+            adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_14, 0x6e);
 
         printf("advrx h_total: %u\n", ss.h_total);
         printf("advrx h_synclen: %u\n", ss.h_synclen);
@@ -273,13 +293,14 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         printf("advrx sync polarities: H(%c) V(%c)\n", (ss.h_polarity ? '+' : '-'), (ss.v_polarity ? '+' : '-'));
         printf("advrx interlace_flag: %u\n", ss.interlace_flag);
         printf("advrx pclk: %luHz\n", pclk_hz);
-        printf("advrx pixelrep: %u\n", pixelrep);
+        printf("advrx pixelderep: %u (IFR: %u)\n", pixelderep, pixelderep_ifr);
         printf("advrx hdmi_mode: %u\n", hdmi_mode);
     }
 
     memcpy(&dev->ss, &ss, sizeof(adv761x_sync_status));
     dev->pclk_hz = pclk_hz;
-    dev->pixelrep = pixelrep;
+    dev->pixelderep = pixelderep;
+    dev->pixelderep_ifr = pixelderep_ifr;
     dev->hdmi_mode = hdmi_mode;
 
     return mode_changed;
