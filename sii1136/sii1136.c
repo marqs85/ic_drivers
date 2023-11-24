@@ -156,7 +156,6 @@ void sii1136_update_infoframe(sii1136_dev *dev, HDMI_infoframe_id_t type, HDMI_i
         // commit update
         sii1136_writereg(dev, 0x19, lastbyte);
     } else {
-        sii1136_writereg(dev, 0xBF, (type == HDMI_AUDIO_INFOFRAME_TYPE) ? 0xc2 : 0xc4);
         sii1136_writereg(dev, 0xC0, ((1<<7) | type));
         sii1136_writereg(dev, 0xC1, ver);
         sii1136_writereg(dev, 0xC2, len);
@@ -238,6 +237,7 @@ void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
     }
 
     // Setup audio infoframe
+    sii1136_writereg(dev, 0xBF, 0xc2);
     sii1136_writereg(dev, 0xC4, cc_val);
     sii1136_writereg(dev, 0xC5, 0x00);
     sii1136_writereg(dev, 0xC6, 0x00);
@@ -258,6 +258,7 @@ void sii1136_set_hdr(sii1136_dev *dev, uint8_t hdr_enable) {
     uint8_t ifr_reg;
 
     // Setup HDR Infoframe
+    sii1136_writereg(dev, 0xBF, 0xc4);
     sii1136_writereg(dev, 0xC4, hdr_enable ? 3 : 0);
     for (ifr_reg=0xC5; ifr_reg<0xC3+HDMI_HDR_INFOFRAME_LEN; ifr_reg++)
         sii1136_writereg(dev, ifr_reg, 0x00);
@@ -320,6 +321,10 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
 
     // Commit AVI infoframe update
     sii1136_update_infoframe(dev, HDMI_AVI_INFOFRAME_TYPE, HDMI_AVI_INFOFRAME_VER, HDMI_AVI_INFOFRAME_LEN, 0x00);
+
+    // Set other Infoframes
+    sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
+    sii1136_set_hdr(dev, dev->cfg.hdr);
 
     // Enable TMDS output
     sii1136_enable_tmds_output(dev, 1);
