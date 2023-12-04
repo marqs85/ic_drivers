@@ -330,7 +330,7 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
     sii1136_enable_tmds_output(dev, 1);
 
     // Set pixelrep
-    sii1136_writereg(dev, SII1136_INPUTBUSFMT, ((1+pixelrep)<<6) | (1<<5));
+    sii1136_writereg(dev, SII1136_INPUTBUSFMT, ((1+pixelrep)<<6) | (1<<5) | (1<<4));
 
     dev->pixelrep = pixelrep;
     dev->pixelrep_infoframe = pixelrep_infoframe;
