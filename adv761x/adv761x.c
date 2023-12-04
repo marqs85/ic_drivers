@@ -98,6 +98,11 @@ void adv761x_init(adv761x_dev *dev) {
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x03, 0x98);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x4c, 0x44);
 
+    // set equalizer
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x8d, 0x04);
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x8e, 0x1e);
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x96, 0x01);
+
     // power down
     adv761x_enable_power(dev, 0);
 
@@ -259,6 +264,15 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
 
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_2);
     pclk_hz = (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_1) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128)) / (pixelderep + 1);
+
+    // check if input is deepcolor
+    if (hdmi_mode) {
+        regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) >> 6;
+        if (regval == 1)
+            pclk_hz = (pclk_hz*4)/5;
+        else if (regval == 2)
+            pclk_hz = (pclk_hz*2)/3;
+    }
 
     // Enforce manual de-repetition to ensure LLC is min. 13MHz as ADV761x output is not stable otherwise
     if (dev->cfg.pixelderep_mode == 0) {
