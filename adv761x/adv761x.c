@@ -87,7 +87,7 @@ void adv761x_init(adv761x_dev *dev) {
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_HDMI_SLAVEADDR, dev->hdmi_base);
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_CP_SLAVEADDR, dev->cp_base);
 
-    // ADI recommendations for ADV761X
+    // ADI recommendations for ADV761X (minus NEW_VS_PARAM which does not work well)
     adv761x_writereg(dev, ADV761X_CP_MAP, 0x6c, 0x00);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x9b, 0x03);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x6f, 0x08);
@@ -96,7 +96,7 @@ void adv761x_init(adv761x_dev *dev) {
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x57, 0xda);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x58, 0x01);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x03, 0x98);
-    adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x4c, 0x44);
+    //adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x4c, 0x44);
 
     // set equalizer
     adv761x_writereg(dev, ADV761X_HDMI_MAP, 0x8d, 0x04);
@@ -222,11 +222,12 @@ int adv761x_check_activity(adv761x_dev *dev) {
 }
 
 int adv761x_get_sync_stats(adv761x_dev *dev) {
-    int mode_changed = 0;
+    int mode_changed = 0, custom_pr = 0;
     adv761x_sync_status ss = {0};
     uint32_t pclk_hz;
     uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
     uint8_t regval;
+    char dv_id[3];
 
     ss.interlace_flag = !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & (1<<5));
 
@@ -262,6 +263,22 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     else
         pixelderep_ifr = 0;
 
+    if (hdmi_mode && (dev->cfg.pixelderep_mode == 0)) {
+        dv_id[0] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1);
+        dv_id[1] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+1);
+        dv_id[2] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+2);
+
+        if (strncmp(dv_id, "DV1", 3) == 0) {
+            pixelderep_ifr = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+4)-1;
+            custom_pr = 1;
+
+            ss.v_backporch = ((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+8) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+7)) - 1;
+            ss.v_active = ((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+12) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+11)) >> ss.interlace_flag;
+            ss.h_backporch = (pixelderep_ifr+1)*((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+6) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+5));
+            ss.h_active = (pixelderep_ifr+1)*((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+10) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+9));
+        }
+    }
+
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_2);
     pclk_hz = (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_1) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128)) / (pixelderep + 1);
 
@@ -276,7 +293,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
 
     // Enforce manual de-repetition to ensure LLC is min. 13MHz as ADV761x output is not stable otherwise
     if (dev->cfg.pixelderep_mode == 0) {
-        if ((pixelderep_ifr > 0) && (pclk_hz < 13000000UL))
+        if (custom_pr || ((pixelderep_ifr > 0) && (pclk_hz < 13000000UL)))
             adv761x_set_pixelderep(dev, 1);
         else if ((pixelderep_ifr != pixelderep) && ((pclk_hz/(pixelderep_ifr+1)) > 13100000UL))
             adv761x_set_pixelderep(dev, 0);
