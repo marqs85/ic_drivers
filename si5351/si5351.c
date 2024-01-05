@@ -250,7 +250,6 @@ int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch ou
     uint32_t clksrc_hz, clkout_hz;
     uint32_t frac_gcd;
     uint8_t clkin_div;
-    uint8_t optim_ratio;
     int pll_rst_needed;
 
     // Generate multisynth config if one is not given
@@ -393,8 +392,19 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
         optim_ratio = 2*clkin_div*mult;
         fbdiv_x100 = (SI_VCO_CENTER_FREQ / ((clksrc_hz/clkin_div) / 100));
         msn_a = optim_ratio*((fbdiv_x100+((optim_ratio/2)*100)) / (optim_ratio*100));
-        if ((msn_a < 16) || (msn_a > 90))
+
+        if ((msn_a < 8) || (msn_a > 90))
             printf("ERROR: Si5351 invalid msn_a of %lu\n\n", msn_a);
+        else if (msn_a < 16)
+            msn_a *= 2;
+
+        ms_a = msn_a / (mult*clkin_div);
+
+        if (ms_a < 4) {
+            msn_a *= 2;
+            ms_a *= 2;
+        }
+
         msn_p1 = 128*msn_a - 512;
 
         pll_msn_config.p1 = msn_p1;
@@ -402,7 +412,6 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
         pll_msn_config.p3 = 1;
         pll_rst_needed = si5351_set_pll_fb_multisynth(dev, pll_ch, &pll_msn_config);
 
-        ms_a = msn_a / (mult*clkin_div);
         // 6 and 8 seem to be ok in integer mode despite what AN619 4.1.2 implies
         if (ms_a == 4) {
             ms_p1 = 0;
