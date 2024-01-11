@@ -227,6 +227,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     uint32_t pclk_hz;
     uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
     uint8_t regval;
+    uint16_t de_h, de_v;
     char dv_id[3];
 
     ss.interlace_flag = !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & (1<<5));
@@ -272,14 +273,16 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
             pixelderep_ifr = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+4)-1;
             custom_pr = 1;
 
-            ss.v_backporch = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+8) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+7);
+            de_v = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+8) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+7);
             ss.v_active = ((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+12) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+11)) >> ss.interlace_flag;
-            ss.h_backporch = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+6) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+5);
+            de_h = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+6) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+5);
             ss.h_active = (pixelderep_ifr+1)*((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+10) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+9));
 
-            // fix vertical offset with most cores
-            if (ss.v_backporch > 0)
-                ss.v_backporch--;
+            // Ignore DE metadata if de_h=de_v=0
+            if (de_h || de_v) {
+                ss.h_backporch = de_h;
+                ss.v_backporch = de_v ? de_v - 1 : 0; // fix vertical offset with most cores
+            }
         }
     }
 
