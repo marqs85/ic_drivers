@@ -48,6 +48,24 @@ uint8_t adv7513_readreg(adv7513_dev *dev, uint8_t regaddr)
     return I2C_read(dev->i2cm_base,1);
 }
 
+void adv7513_writereg_pktmem(adv7513_dev *dev, uint8_t regaddr, uint8_t data)
+{
+    I2C_start(dev->i2cm_base, (dev->pktmem_base>>1), 0);
+    I2C_write(dev->i2cm_base, regaddr, 0);
+    I2C_write(dev->i2cm_base, data, 1);
+}
+
+uint8_t adv7513_readreg_pktmem(adv7513_dev *dev, uint8_t regaddr)
+{
+    //Phase 1
+    I2C_start(dev->i2cm_base, (dev->pktmem_base>>1), 0);
+    I2C_write(dev->i2cm_base, regaddr, 0);
+
+    //Phase 2
+    I2C_start(dev->i2cm_base, (dev->pktmem_base>>1), 1);
+    return I2C_read(dev->i2cm_base,1);
+}
+
 int adv7513_init(adv7513_dev *dev) {
     memcpy(&dev->cfg, &adv7513_cfg_default, sizeof(adv7513_config));
 
@@ -107,6 +125,7 @@ void adv7513_enable_power(adv7513_dev *dev, int enable) {
         adv7513_writereg(dev, 0x0C, 0x3C);
 
         adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
+        adv7513_set_hdr(dev, dev->cfg.hdr);
 
         // Setup manual pixel repetition
         adv7513_writereg(dev, 0x3B, (0xC0 | (dev->pixelrep << 3) | (dev->pixelrep_infoframe << 1)));
@@ -205,6 +224,30 @@ void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
     adv7513_writereg(dev, 0x4A, 0x80); // Disable Audio InfoFrame modify
 }
 
+void adv7513_set_hdr(adv7513_dev *dev, uint8_t hdr_enable) {
+    uint8_t ifr_reg, crc=0;
+
+    adv7513_writereg_pktmem(dev, 0xDF, 0x80); // Enable spare packet 1 modify
+
+    // Setup HDR Infoframe
+    adv7513_writereg_pktmem(dev, 0xC0, ((1<<7) | HDMI_HDR_INFOFRAME_TYPE));
+    adv7513_writereg_pktmem(dev, 0xC1, HDMI_HDR_INFOFRAME_VER);
+    adv7513_writereg_pktmem(dev, 0xC2, HDMI_HDR_INFOFRAME_LEN);
+    adv7513_writereg_pktmem(dev, 0xC3, 0);
+    adv7513_writereg_pktmem(dev, 0xC4, hdr_enable ? 3 : 0);
+
+    for (ifr_reg=0xC0; ifr_reg<=0xC4; ifr_reg++)
+        crc += adv7513_readreg_pktmem(dev, ifr_reg);
+
+    crc = 0x100 - crc;
+
+    adv7513_writereg_pktmem(dev, 0xC3, crc);
+
+    // Commit infoframe update
+    adv7513_writereg_pktmem(dev, 0xDF, 0x00); // Disable spare packet 1 modify
+    adv7513_writereg(dev, 0x40, 0x01); // Enable spare packet 1
+}
+
 void adv7513_set_tx_mode(adv7513_dev *dev, HDMI_tx_mode_t mode) {
     if (mode == TX_HDMI_YCBCR444)
         adv7513_set_csc_mode(dev, 1, CS_RGB_FULL, CS_YCBCR_709);
@@ -287,6 +330,8 @@ void adv7513_update_config(adv7513_dev *dev, adv7513_config *cfg) {
             (cfg->audio_cc_val != dev->cfg.audio_cc_val) ||
             (cfg->audio_ca_val != dev->cfg.audio_ca_val))
             adv7513_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
+        if (cfg->hdr != dev->cfg.hdr)
+            adv7513_set_hdr(dev, cfg->hdr);
 
         memcpy(&dev->cfg, cfg, sizeof(adv7513_config));
     }
