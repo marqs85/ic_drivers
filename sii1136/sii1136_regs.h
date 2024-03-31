@@ -46,6 +46,7 @@
 #define SII1136_SPDIF_PROC              0x25
 
 #define SII1136_AUDIOMODE               0x26
+#define SII1136_AUDIOMODE2              0x27
 
 // interrupt registers
 #define SII1136_IRQ_ENABLE              0x3C

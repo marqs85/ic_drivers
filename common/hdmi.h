@@ -123,6 +123,17 @@ typedef enum {
 } HDMI_audio_ca_t;
 
 typedef enum {
+    SF_STRM     = 0,
+    SF_32KHZ    = 1,
+    SF_44P1KHZ  = 2,
+    SF_48KHZ    = 3,
+    SF_88P2KHZ  = 4,
+    SF_96KHZ    = 5,
+    SF_176P4KHZ = 6,
+    SF_192KHZ   = 7
+} HDMI_audio_sf_t;
+
+typedef enum {
     IEC60958_FS_32KHZ = 0x3,
     IEC60958_FS_44P1KHZ = 0x0,
     IEC60958_FS_48KHZ = 0x2,

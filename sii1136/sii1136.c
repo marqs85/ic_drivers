@@ -178,9 +178,11 @@ void sii1136_update_infoframe(sii1136_dev *dev, HDMI_infoframe_id_t type, HDMI_i
 void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val) {
     int i;
     uint8_t regval, ifr_reg;
+    HDMI_audio_sf_t audio_iec_sf_map[] = {SF_44P1KHZ, 0, SF_48KHZ, SF_32KHZ, 0, 0, 0, 0, SF_88P2KHZ, 0, SF_96KHZ, 0, SF_176P4KHZ, 0, SF_192KHZ, 0};
 
     // Set audio mode (also selects correct register map) and mute
-    sii1136_writereg(dev, SII1136_AUDIOMODE, (((fmt==AUDIO_I2S) ? 2 : 1) << 6) | (1<<5) | (1<<4));
+    sii1136_writereg(dev, SII1136_AUDIOMODE, (((fmt==AUDIO_I2S) ? 2 : 1) << 6) | (((cc_val != CC_2CH) || (i2s_stereo_cfg != I2S_2CH_STEREO))<<5) | (1<<4));
+    sii1136_writereg(dev, SII1136_AUDIOMODE2, (fmt==AUDIO_I2S) ? (audio_iec_sf_map[i2s_fs]<<3) : 0);
 
     if (fmt == AUDIO_SPDIF) {
         cc_val = CC_HDR;
@@ -224,16 +226,16 @@ void sii1136_set_audio(sii1136_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s
         sii1136_writereg(dev, SII1136_I2S_STAT, (1<<2));
 
         // Set category code
-        sii1136_writereg(dev, SII1136_I2S_CATCODE, 0x20);
+        sii1136_writereg(dev, SII1136_I2S_CATCODE, 0x00);
 
         // Set channel number
-        sii1136_writereg(dev, SII1136_I2S_CHNUM, 0x00);
+        sii1136_writereg(dev, SII1136_I2S_CHNUM, 0x01);
 
         // Clock accuracy and samplerate
         sii1136_writereg(dev, SII1136_I2S_ACC_SFS, i2s_fs);
 
         // 24-bit I2S audio
-        sii1136_writereg(dev, SII1136_I2S_OFS_LEN, 0x0B);
+        sii1136_writereg(dev, SII1136_I2S_OFS_LEN, (~i2s_fs<<4)|0x0B);
     }
 
     // Setup audio infoframe
