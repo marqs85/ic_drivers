@@ -260,13 +260,28 @@ void sii1136_set_hdr(sii1136_dev *dev, uint8_t hdr_enable) {
     uint8_t ifr_reg;
 
     // Setup HDR Infoframe
-    sii1136_writereg(dev, 0xBF, 0xc4);
+    sii1136_writereg(dev, 0xBF, hdr_enable ? 0xc4 : 0x04);
     sii1136_writereg(dev, 0xC4, hdr_enable ? 3 : 0);
     for (ifr_reg=0xC5; ifr_reg<0xC3+HDMI_HDR_INFOFRAME_LEN; ifr_reg++)
         sii1136_writereg(dev, ifr_reg, 0x00);
 
     // Commit infoframe update
     sii1136_update_infoframe(dev, HDMI_HDR_INFOFRAME_TYPE, HDMI_HDR_INFOFRAME_VER, HDMI_HDR_INFOFRAME_LEN, 0x00);
+}
+
+void sii1136_set_vrr(sii1136_dev *dev, uint8_t vrr_mode) {
+    uint8_t ifr_reg;
+
+    // Setup Freesync Infoframe
+    sii1136_writereg(dev, 0xBF, vrr_mode ? 0xc1 : 0x01);
+    sii1136_writereg(dev, 0xC4, vrr_mode ? 0x1a : 0);
+    for (ifr_reg=0xC5; ifr_reg<=0xC8; ifr_reg++)
+        sii1136_writereg(dev, ifr_reg, 0x00);
+    sii1136_writereg(dev, 0xC9, 0x07);
+    sii1136_writereg(dev, 0xCA, 40);
+
+    // Commit infoframe update
+    sii1136_update_infoframe(dev, HDMI_SPD_INFOFRAME_TYPE, HDMI_VENDORSPEC_INFOFRAME_VER, HDMI_VENDORSPEC_INFOFRAME_LEN, 144);
 }
 
 void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode) {
@@ -305,6 +320,7 @@ void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode) {
     // Set other Infoframes
     sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
     sii1136_set_hdr(dev, dev->cfg.hdr);
+    sii1136_set_vrr(dev, dev->cfg.vrr);
 }
 
 void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_infoframe, HDMI_vic_t vic, uint32_t pclk_hz) {
@@ -327,6 +343,7 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
     // Set other Infoframes
     sii1136_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
     sii1136_set_hdr(dev, dev->cfg.hdr);
+    sii1136_set_vrr(dev, dev->cfg.vrr);
 
     // Enable TMDS output
     sii1136_enable_tmds_output(dev, 1);
@@ -351,6 +368,8 @@ void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg) {
             sii1136_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
         if (cfg->hdr != dev->cfg.hdr)
             sii1136_set_hdr(dev, cfg->hdr);
+        if (cfg->vrr != dev->cfg.vrr)
+            sii1136_set_vrr(dev, cfg->vrr);
 
         memcpy(&dev->cfg, cfg, sizeof(sii1136_config));
     }

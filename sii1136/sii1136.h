@@ -34,6 +34,7 @@ typedef struct {
     HDMI_audio_cc_t audio_cc_val;
     HDMI_audio_ca_t audio_ca_val;
     uint8_t hdr;
+    uint8_t vrr;
 } sii1136_config;
 
 typedef struct {
