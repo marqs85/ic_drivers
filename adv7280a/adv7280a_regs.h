@@ -22,5 +22,7 @@
 
 // Main map
 #define ADV7280A_INPUTCTRL            0x00
+#define ADV7280A_VIDSEL1              0x01
+#define ADV7280A_VIDSEL2              0x02
 
 #endif /* ADV7280A_REGS_H_ */

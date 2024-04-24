@@ -50,7 +50,20 @@ typedef struct {
 } adv7280a_sync_status;
 
 typedef struct {
-    uint8_t tmp;
+    uint8_t ntsc_pedestal;
+    uint8_t brightness; // processed as signed
+    uint8_t contrast;
+    uint8_t hue; // processed as signed
+    uint8_t sh_filt_y;
+    uint8_t sh_filt_c;
+    uint8_t comb_str_pal;
+    uint8_t comb_str_ntsc;
+    uint8_t comb_ctaps_pal;
+    uint8_t comb_ctaps_ntsc;
+    uint8_t comb_cmode_pal;
+    uint8_t comb_cmode_ntsc;
+    uint8_t comb_ymode_pal;
+    uint8_t comb_ymode_ntsc;
 } adv7280a_config;
 
 typedef struct {
@@ -64,12 +77,24 @@ typedef struct {
 
 int adv7280a_init(adv7280a_dev *dev);
 
+void adv7280a_get_default_cfg(adv7280a_config *cfg);
+
 void adv7280a_enable_power(adv7280a_dev *dev, int enable);
 
 void adv7280a_select_input(adv7280a_dev *dev, adv7280a_input input);
 
+void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal);
+
+void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast, uint8_t hue);
+
+void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c);
+
+void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg);
+
 int adv7280a_check_activity(adv7280a_dev *dev);
 
 int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame);
+
+void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg);
 
 #endif /* ADV7280A_H_ */

@@ -26,7 +26,13 @@
 #define SDP_PCNT_TOLERANCE 50
 
 const adv7280a_config adv7280a_cfg_default = {
-    .tmp = 1
+    .brightness = 128-32,
+    .contrast = 128,
+    .hue = 128,
+    .sh_filt_y = 1,
+    .comb_str_pal = 1,
+    .comb_ctaps_pal = 2,
+    .comb_ctaps_ntsc = 1,
 };
 
 void adv7280a_writereg(adv7280a_dev *dev, uint8_t regaddr, uint8_t data) {
@@ -43,6 +49,10 @@ uint8_t adv7280a_readreg(adv7280a_dev *dev, uint8_t regaddr) {
     //Phase 2
     I2C_start(dev->i2cm_base, dev->i2c_addr, 1);
     return I2C_read(dev->i2cm_base,1);
+}
+
+void adv7280a_get_default_cfg(adv7280a_config *cfg) {
+    memcpy(cfg, &adv7280a_cfg_default, sizeof(adv7280a_config));
 }
 
 int adv7280a_init(adv7280a_dev *dev) {
@@ -68,8 +78,9 @@ int adv7280a_init(adv7280a_dev *dev) {
     adv7280a_select_input(dev, ADV7280A_INPUT_YC_AIN34);
 
     adv7280a_writereg(dev, 0x14, 0x11);
+    adv7280a_writereg(dev, ADV7280A_VIDSEL2, (dev->cfg.ntsc_pedestal<<4)|0x4);
     adv7280a_writereg(dev, 0x03, 0x0C);
-    adv7280a_writereg(dev, 0x04, 0x07);
+    adv7280a_writereg(dev, 0x04, 0x87);
     adv7280a_writereg(dev, 0x17, 0x41);
     adv7280a_writereg(dev, 0x1D, 0x40);
     adv7280a_writereg(dev, 0x52, 0xCD);
@@ -84,6 +95,11 @@ int adv7280a_init(adv7280a_dev *dev) {
     adv7280a_writereg(dev, 0x32, 0x81);
     adv7280a_writereg(dev, 0x33, 0x44);
     adv7280a_writereg(dev, 0x35, 0xa);
+
+    // set default levels and filter settings
+    adv7280a_set_levels(dev, dev->cfg.brightness, dev->cfg.contrast, dev->cfg.hue);
+    adv7280a_set_shfilt(dev, dev->cfg.sh_filt_y, dev->cfg.sh_filt_c);
+    adv7280a_set_combfilt(dev, &dev->cfg);
 
     adv7280a_enable_power(dev, 0);
 
@@ -103,6 +119,26 @@ void adv7280a_select_input(adv7280a_dev *dev, adv7280a_input input) {
     adv7280a_writereg(dev, 0x0E, 0x00);
 
     adv7280a_writereg(dev, 0x17, (input <= ADV7280A_INPUT_CVBS_AIN4) ? 0x41 : 0x01);
+}
+
+void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal) {
+    adv7280a_writereg(dev, ADV7280A_VIDSEL2, (ntsc_pedestal<<4)|0x4);
+}
+
+void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast, uint8_t hue) {
+    adv7280a_writereg(dev, 0x0a, brightness-128);
+    adv7280a_writereg(dev, 0x08, contrast);
+    adv7280a_writereg(dev, 0x0b, hue-128);
+}
+
+void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c) {
+    adv7280a_writereg(dev, 0x17, (sh_filt_c<<5) | sh_filt_y);
+}
+
+void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg) {
+    adv7280a_writereg(dev, 0x19, 0xf0 | (cfg->comb_str_ntsc<<2) | cfg->comb_str_pal);
+    adv7280a_writereg(dev, 0x38, ((cfg->comb_ctaps_ntsc+1)<<6) | (((!!cfg->comb_cmode_ntsc<<2) | cfg->comb_cmode_ntsc)<<3) | ((!!cfg->comb_ymode_ntsc<<2) | cfg->comb_ymode_ntsc));
+    adv7280a_writereg(dev, 0x39, ((cfg->comb_ctaps_pal+1)<<6) | (((!!cfg->comb_cmode_pal<<2) | cfg->comb_cmode_pal)<<3) | ((!!cfg->comb_ymode_pal<<2) | cfg->comb_ymode_pal));
 }
 
 int adv7280a_check_activity(adv7280a_dev *dev) {
@@ -142,4 +178,21 @@ int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlac
     dev->ss.pcnt_frame = pcnt_frame;
 
     return mode_changed;
+}
+
+void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg) {
+    if (dev->powered_on) {
+        if (cfg->ntsc_pedestal != dev->cfg.ntsc_pedestal)
+            adv7280a_set_pedestal(dev, cfg->ntsc_pedestal);
+        if ((cfg->brightness != dev->cfg.brightness) ||
+            (cfg->contrast != dev->cfg.contrast) ||
+            (cfg->hue != dev->cfg.hue))
+            adv7280a_set_levels(dev, cfg->brightness, cfg->contrast, cfg->hue);
+        if ((cfg->sh_filt_y != dev->cfg.sh_filt_y) || (cfg->sh_filt_c != dev->cfg.sh_filt_c))
+            adv7280a_set_shfilt(dev, cfg->sh_filt_y, cfg->sh_filt_c);
+        if (memcmp(&cfg->comb_str_pal, &dev->cfg.comb_str_pal, sizeof(adv7280a_config) - offsetof(adv7280a_config, comb_str_pal)))
+            adv7280a_set_combfilt(dev, cfg);
+
+        memcpy(&dev->cfg, cfg, sizeof(adv7280a_config));
+    }
 }
