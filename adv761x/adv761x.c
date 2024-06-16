@@ -118,6 +118,9 @@ void adv761x_init(adv761x_dev *dev) {
     // output color mode
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_02, 0xf2);
 
+    // disable AV code insertion to allow 0x00 and 0xff data values
+    adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_05, 0x28);
+
     // set free run mode 1080p
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_PRIM_MODE, 0x06);
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_VIDEO_STD, 0x19);

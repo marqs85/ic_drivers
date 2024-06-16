@@ -26,6 +26,7 @@
 #define ADV761X_IO_REG_02           0x02
 #define ADV761X_IO_REG_03           0x03
 #define ADV761X_IO_REG_04           0x04
+#define ADV761X_IO_REG_05           0x05
 #define ADV761X_IO_REG_0C           0x0C
 #define ADV761X_IO_REG_14           0x14
 #define ADV761X_IO_REG_15           0x15
