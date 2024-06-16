@@ -156,26 +156,26 @@ int adv7280a_check_activity(adv7280a_dev *dev) {
     return activity_change;
 }
 
-int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame) {
+int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_field) {
     int mode_changed = 0;
 
-    if (((vtotal > 0) && (pcnt_frame > 0)) &&
+    if (((vtotal > 0) && (pcnt_field > 0)) &&
         ((vtotal != dev->ss.v_total) ||
         (interlace_flag != dev->ss.interlace_flag) ||
-        (pcnt_frame < (dev->ss.pcnt_frame - SDP_PCNT_TOLERANCE)) ||
-        (pcnt_frame > (dev->ss.pcnt_frame + SDP_PCNT_TOLERANCE))))
+        (pcnt_field < (dev->ss.pcnt_field - SDP_PCNT_TOLERANCE)) ||
+        (pcnt_field > (dev->ss.pcnt_field + SDP_PCNT_TOLERANCE))))
     {
         mode_changed = 1;
 
         printf("totlines: %u\n", vtotal);
         printf("interlace_flag: %u\n", interlace_flag);
-        printf("pcnt_frame: %lu\n", pcnt_frame);
+        printf("pcnt_field: %lu\n", pcnt_field);
         //printf("interlaced: %u\n", !!(adv7280a_readreg(dev, 0x13) & 0x40));
     }
 
     dev->ss.v_total = vtotal;
     dev->ss.interlace_flag = interlace_flag;
-    dev->ss.pcnt_frame = pcnt_frame;
+    dev->ss.pcnt_field = pcnt_field;
 
     return mode_changed;
 }

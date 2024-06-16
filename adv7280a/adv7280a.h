@@ -46,7 +46,7 @@ typedef enum {
 typedef struct {
     uint16_t v_total;
     uint8_t interlace_flag;
-    uint32_t pcnt_frame;
+    uint32_t pcnt_field;
 } adv7280a_sync_status;
 
 typedef struct {
@@ -93,7 +93,7 @@ void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg);
 
 int adv7280a_check_activity(adv7280a_dev *dev);
 
-int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame);
+int adv7280a_get_sync_stats(adv7280a_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_field);
 
 void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg);
 
