@@ -69,7 +69,7 @@ typedef struct {
     };
     uint16_t v_total;
     uint8_t interlace_flag;
-    uint32_t pcnt_frame;
+    uint32_t pcnt_field;
 } isl51002_sync_status;
 
 typedef struct {
@@ -133,8 +133,8 @@ void isl_source_sel(isl51002_dev *dev, isl_input_t input, video_sync syncinput, 
 
 int isl_check_activity(isl51002_dev *dev, isl_input_t input, video_sync syncinput);
 
-// vtotal/interlace_flag/pcnt_frame must be provided externally as isl51002 measurements are not reliable/accurate enough
-int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame);
+// vtotal/interlace_flag/pcnt_field must be provided externally as isl51002 measurements are not reliable/accurate enough
+int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_field);
 
 void isl_source_setup(isl51002_dev *dev, uint16_t h_samplerate);
 
@@ -144,7 +144,7 @@ uint16_t isl_get_pll_htotal(isl51002_dev *dev);
 
 void isl_de_adj(isl51002_dev *dev);
 
-void isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase);
+int isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase);
 
 uint8_t isl_get_sampler_phase(isl51002_dev *dev);
 

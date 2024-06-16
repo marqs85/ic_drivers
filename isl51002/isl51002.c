@@ -78,7 +78,7 @@ int isl_init(isl51002_dev *dev) {
     isl_writereg(dev, ISL_OUTFORMAT2, (dev->xclk_out_en << 6) | 0x08);
 
     // CH1 SOG only
-    isl_writereg(dev, ISL_SYNCPOLLCFG, 0x20);
+    isl_writereg(dev, ISL_SYNCPOLLCFG, 0x28);
 
     // lock to hsync leading edge
     isl_writereg(dev, ISL_HPLL_MISCCFG, 0x01);
@@ -162,7 +162,7 @@ int isl_check_activity(isl51002_dev *dev, isl_input_t input, video_sync syncinpu
     return activity_change;
 }
 
-int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_frame) {
+int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_flag, uint32_t pcnt_field) {
     uint8_t sync_params;
     uint16_t h_period_x16;
     int mode_changed = 0, isl_h_period_change = 0;
@@ -179,7 +179,7 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
 #ifdef ISL_SYNC_MEAS
     h_period_x16 = (isl_readreg(dev, ISL_HSYNCPERIOD_MSB) << 8) | isl_readreg(dev, ISL_HSYNCPERIOD_LSB);
     if (h_period_x16 == 0) {
-        h_period_x16 = (16*pcnt_frame)/vtotal;
+        h_period_x16 = (16*pcnt_field)/vtotal;
     }
     if ((h_period_x16 < (dev->sm.h_period_x16 - HPX16_TOLERANCE)) ||
         (h_period_x16 > (dev->sm.h_period_x16 + HPX16_TOLERANCE))) {
@@ -196,12 +196,12 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
     dev->sm.v_active = (isl_readreg(dev, ISL_LINEWIDTH_MSB) << 8) | isl_readreg(dev, ISL_LINEWIDTH_LSB);
 #endif
 
-    if (((vtotal > 0) && (pcnt_frame > 0)) &&
+    if (((vtotal > 0) && (pcnt_field > 0)) &&
         ((vtotal != dev->ss.v_total) ||
         (interlace_flag != dev->ss.interlace_flag) ||
         isl_h_period_change ||
-        (pcnt_frame < (dev->ss.pcnt_frame - PCNT_TOLERANCE)) ||
-        (pcnt_frame > (dev->ss.pcnt_frame + PCNT_TOLERANCE)) ||
+        (pcnt_field < (dev->ss.pcnt_field - PCNT_TOLERANCE)) ||
+        (pcnt_field > (dev->ss.pcnt_field + PCNT_TOLERANCE)) ||
         ((sync_params & 0x3c) != (dev->ss.sync_params & 0x3c))))
     {
         mode_changed = 1;
@@ -215,13 +215,13 @@ int isl_get_sync_stats(isl51002_dev *dev, uint16_t vtotal, uint8_t interlace_fla
 #endif
         printf("totlines: %u\n", vtotal);
         printf("interlace_flag: %u\n", interlace_flag);
-        printf("pcnt_frame: %lu\n", pcnt_frame);
+        printf("pcnt_field: %lu\n", pcnt_field);
     }
 
     dev->ss.sync_params = sync_params;
     dev->ss.v_total = vtotal;
     dev->ss.interlace_flag = interlace_flag;
-    dev->ss.pcnt_frame = pcnt_frame;
+    dev->ss.pcnt_field = pcnt_field;
 
     return mode_changed;
 }
@@ -261,14 +261,19 @@ void isl_de_adj(isl51002_dev *dev) {
     isl_writereg(dev, ISL_PHASEADJCMD, 0x04);
 }
 
-void isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase) {
+int isl_set_sampler_phase(isl51002_dev *dev, uint8_t sampler_phase) {
     if (!sampler_phase) {
+        // Return if previous adjustment in progress
+        if (isl_readreg(dev, ISL_PHASEADJSTATUS) & (1<<7))
+            return 1;
         printf("Auto-adjusting phase\n");
         isl_writereg(dev, ISL_PHASEADJCMD, 0x03);
     } else {
         isl_writereg(dev, ISL_HPLL_PHASE, sampler_phase-1);
         printf("Phase set to %u deg\n", ((sampler_phase-1)*5625)/1000);
     }
+
+    return 0;
 }
 
 uint8_t isl_get_sampler_phase(isl51002_dev *dev) {
