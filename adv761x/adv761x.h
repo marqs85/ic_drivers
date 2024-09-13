@@ -59,6 +59,8 @@ typedef struct {
 typedef struct {
     adv761x_rgb_range default_rgb_range;
     uint8_t pixelderep_mode;
+    uint8_t enable_dv1;
+    uint8_t enable_dv1_menu;
 } adv761x_config;
 
 typedef struct {
@@ -86,6 +88,8 @@ typedef struct {
 } adv761x_dev;
 
 void adv761x_init(adv761x_dev *dev);
+
+void adv761x_get_default_cfg(adv761x_config *cfg);
 
 void adv761x_enable_power(adv761x_dev *dev, int enable);
 

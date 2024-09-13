@@ -27,7 +27,9 @@
 
 const adv761x_config adv761x_cfg_default = {
     .default_rgb_range = ADV761X_RGB_LIMITED,
-    .pixelderep_mode = 0
+    .pixelderep_mode = 1,
+    .enable_dv1 = 1,
+    .enable_dv1_menu = 1
 };
 
 uint8_t adv761x_get_baseaddr(adv761x_dev *dev, adv761x_reg_map map) {
@@ -148,7 +150,13 @@ void adv761x_init(adv761x_dev *dev) {
     // allow compressed audio
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_AUDIO_MUTE_MSK, 0x1f);
 
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_00H, 0x80);
+
     adv761x_set_spdif_mux(dev, (dev->audio_sample_type == IEC60958_SAMPLE_NONPCM));
+}
+
+void adv761x_get_default_cfg(adv761x_config *cfg) {
+    memcpy(cfg, &adv761x_cfg_default, sizeof(adv761x_config));
 }
 
 void adv761x_enable_power(adv761x_dev *dev, int enable) {
@@ -225,7 +233,7 @@ int adv761x_check_activity(adv761x_dev *dev) {
 }
 
 int adv761x_get_sync_stats(adv761x_dev *dev) {
-    int mode_changed = 0, custom_pr = 0;
+    int mode_changed = 0, dv1_pr = 0, dv1_menu;
     adv761x_sync_status ss = {0};
     uint32_t pclk_hz;
     uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
@@ -267,19 +275,23 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     else
         pixelderep_ifr = 0;
 
-    if (hdmi_mode && (dev->cfg.pixelderep_mode == 0)) {
+    if (hdmi_mode && dev->cfg.enable_dv1) {
         dv_id[0] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1);
         dv_id[1] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+1);
         dv_id[2] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+2);
 
         if (strncmp(dv_id, "DV1", 3) == 0) {
+            dv1_pr = 1;
+            dv1_menu = !!(adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+3) & 0x4);
             pixelderep_ifr = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+4)-1;
-            custom_pr = 1;
 
             de_v = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+8) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+7);
             ss.v_active = ((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+12) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+11)) >> ss.interlace_flag;
             de_h = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+6) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+5);
             ss.h_active = (pixelderep_ifr+1)*((adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+10) << 8) | adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+9));
+
+            if (dv1_menu && dev->cfg.enable_dv1_menu && (ss.h_active/(pixelderep_ifr+1) < 640))
+                pixelderep_ifr /= (640/(ss.h_active/(pixelderep_ifr+1)))+1;
 
             // Ignore DE metadata if de_h=de_v=0
             if (de_h || de_v) {
@@ -303,7 +315,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
 
     // Enforce manual de-repetition to ensure LLC is min. 13MHz as ADV761x output is not stable otherwise
     if (dev->cfg.pixelderep_mode == 0) {
-        if (custom_pr || ((pixelderep_ifr > 0) && (pclk_hz < 13000000UL)))
+        if (dv1_pr || ((pixelderep_ifr > 0) && (pclk_hz < 13000000UL)))
             adv761x_set_pixelderep(dev, 1);
         else if ((pixelderep_ifr != pixelderep) && ((pclk_hz/(pixelderep_ifr+1)) > 13100000UL))
             adv761x_set_pixelderep(dev, 0);
@@ -335,7 +347,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         printf("advrx interlace_flag: %u\n", ss.interlace_flag);
         printf("advrx pclk: %luHz\n", pclk_hz);
         printf("advrx pixelderep: %u (IFR: %u)\n", pixelderep, pixelderep_ifr);
-        printf("advrx hdmi_mode: %u %s\n", hdmi_mode, custom_pr ? "(DV1)" : "");
+        printf("advrx hdmi_mode: %u %s\n", hdmi_mode, dv1_pr ? "(DV1)" : "");
     }
 
     memcpy(&dev->ss, &ss, sizeof(adv761x_sync_status));
