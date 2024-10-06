@@ -34,6 +34,7 @@ typedef struct {
     HDMI_audio_cc_t audio_cc_val;
     HDMI_audio_ca_t audio_ca_val;
     uint8_t hdr;
+    uint8_t vrr;
 } adv7513_config;
 
 typedef struct {
@@ -58,6 +59,8 @@ void adv7513_get_default_cfg(adv7513_config *cfg);
 void adv7513_set_audio(adv7513_dev *dev, HDMI_audio_fmt_t fmt, HDMI_i2s_fs_t i2s_fs, HDMI_i2s_stereo_cfg_t i2s_stereo_cfg, HDMI_audio_cc_t cc_val, HDMI_audio_ca_t ca_val);
 
 void adv7513_set_hdr(adv7513_dev *dev, uint8_t hdr_enable);
+
+void adv7513_set_vrr(adv7513_dev *dev, uint8_t vrr_enable);
 
 void adv7513_set_tx_mode(adv7513_dev *dev, HDMI_tx_mode_t mode);
 

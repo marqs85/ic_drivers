@@ -126,6 +126,7 @@ void adv7513_enable_power(adv7513_dev *dev, int enable) {
 
         adv7513_set_audio(dev, dev->cfg.audio_fmt, dev->cfg.i2s_fs, dev->cfg.i2s_stereo_cfg, dev->cfg.audio_cc_val, dev->cfg.audio_ca_val);
         adv7513_set_hdr(dev, dev->cfg.hdr);
+        adv7513_set_vrr(dev, dev->cfg.vrr);
 
         // Setup manual pixel repetition
         adv7513_writereg(dev, 0x3B, (0xC0 | (dev->pixelrep << 3) | (dev->pixelrep_infoframe << 1)));
@@ -245,7 +246,36 @@ void adv7513_set_hdr(adv7513_dev *dev, uint8_t hdr_enable) {
 
     // Commit infoframe update
     adv7513_writereg_pktmem(dev, 0xDF, 0x00); // Disable spare packet 1 modify
-    adv7513_writereg(dev, 0x40, 0x01); // Enable spare packet 1
+    adv7513_writereg(dev, 0x40, adv7513_readreg(dev, 0x40)|0x01); // Enable spare packet 1
+}
+
+void adv7513_set_vrr(adv7513_dev *dev, uint8_t vrr_enable) {
+    uint8_t ifr_reg, crc=0;
+
+    adv7513_writereg_pktmem(dev, 0xFF, 0x80); // Enable spare packet 2 modify
+
+    // Setup HDR Infoframe
+    adv7513_writereg_pktmem(dev, 0xE0, ((1<<7) | HDMI_SPD_INFOFRAME_TYPE));
+    adv7513_writereg_pktmem(dev, 0xE1, HDMI_VENDORSPEC_INFOFRAME_VER);
+    adv7513_writereg_pktmem(dev, 0xE2, HDMI_VENDORSPEC_INFOFRAME_LEN);
+    adv7513_writereg_pktmem(dev, 0xE3, 0);
+    adv7513_writereg_pktmem(dev, 0xE4, vrr_enable ? 0x1a : 0);
+    for (ifr_reg=0xE5; ifr_reg<=0xE8; ifr_reg++)
+        adv7513_writereg_pktmem(dev, ifr_reg, 0);
+    adv7513_writereg_pktmem(dev, 0xE9, 0x07);
+    adv7513_writereg_pktmem(dev, 0xEA, 40);
+    adv7513_writereg_pktmem(dev, 0xEB, 144);
+
+    for (ifr_reg=0xE0; ifr_reg<=0xEB; ifr_reg++)
+        crc += adv7513_readreg_pktmem(dev, ifr_reg);
+
+    crc = 0x100 - crc;
+
+    adv7513_writereg_pktmem(dev, 0xE3, crc);
+
+    // Commit infoframe update
+    adv7513_writereg_pktmem(dev, 0xFF, 0x00); // Disable spare packet 2 modify
+    adv7513_writereg(dev, 0x40, adv7513_readreg(dev, 0x40)|0x02); // Enable spare packet 2
 }
 
 void adv7513_set_tx_mode(adv7513_dev *dev, HDMI_tx_mode_t mode) {
@@ -332,6 +362,8 @@ void adv7513_update_config(adv7513_dev *dev, adv7513_config *cfg) {
             adv7513_set_audio(dev, cfg->audio_fmt, cfg->i2s_fs, cfg->i2s_stereo_cfg, cfg->audio_cc_val, cfg->audio_ca_val);
         if (cfg->hdr != dev->cfg.hdr)
             adv7513_set_hdr(dev, cfg->hdr);
+        if (cfg->vrr != dev->cfg.vrr)
+            adv7513_set_vrr(dev, cfg->vrr);
 
         memcpy(&dev->cfg, cfg, sizeof(adv7513_config));
     }
