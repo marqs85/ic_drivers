@@ -61,6 +61,7 @@ typedef struct {
     uint8_t pixelderep_mode;
     uint8_t enable_dv1;
     uint8_t enable_dv1_menu;
+    uint8_t edid_sel;
 } adv761x_config;
 
 typedef struct {
@@ -74,8 +75,7 @@ typedef struct {
     uint8_t hdmi_base;
     uint8_t cp_base;
     uint32_t xtal_freq;
-    uint8_t *edid;
-    uint16_t edid_len;
+    const edid_t **edid_list;
     uint8_t sync_active;
     adv761x_sync_status ss;
     uint32_t pclk_hz;
@@ -92,6 +92,8 @@ void adv761x_init(adv761x_dev *dev);
 void adv761x_get_default_cfg(adv761x_config *cfg);
 
 void adv761x_enable_power(adv761x_dev *dev, int enable);
+
+int adv761x_update_edid(adv761x_dev *dev, unsigned edid_id);
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng);
 

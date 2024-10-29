@@ -20,6 +20,9 @@
 #ifndef HDMI_H_
 #define HDMI_H_
 
+#define EDID_MAX_EXTBLOCKS          3
+#define EDID_MAX_SIZE               (128*(EDID_MAX_EXTBLOCKS+1))
+
 typedef enum {
     HDMI_Unknown = 0 ,
     HDMI_640x480p60 = 1 ,
@@ -150,5 +153,10 @@ typedef enum {
     I2S_4CH_STEREO_5p1,
     I2S_4CH_STEREO_7p1,
 } HDMI_i2s_stereo_cfg_t;
+
+typedef struct {
+    unsigned char data[EDID_MAX_SIZE];
+    unsigned len;
+} edid_t;
 
 #endif

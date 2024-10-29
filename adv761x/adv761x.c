@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include "adv761x.h"
 #include "i2c_opencores.h"
 
@@ -76,9 +77,11 @@ uint8_t adv761x_readreg(adv761x_dev *dev, adv761x_reg_map map, uint8_t regaddr)
 }
 
 void adv761x_init(adv761x_dev *dev) {
-    int i;
+    unsigned edid_cur = dev->cfg.edid_sel;
 
+    // Preserve EDID to minimize disruptions for connected source
     memcpy(&dev->cfg, &adv761x_cfg_default, sizeof(adv761x_config));
+    dev->cfg.edid_sel = edid_cur;
 
     // Set I2C mapping
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_CEC_SLAVEADDR, dev->cec_base);
@@ -131,12 +134,10 @@ void adv761x_init(adv761x_dev *dev) {
     /*adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_HPA_REG1, 0x70);
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HPA_CFG_REG, 0x23);
     usleep(1000000);*/
-    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HPA_CFG_REG, 0x22);
+    adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HPA_CFG_REG, 0x24);
 
-    //program and enabled EDID
-    for (i=0; i<dev->edid_len; i++)
-        adv761x_writereg(dev, ADV761X_EDID_MAP, i, dev->edid[i]);
-    adv761x_writereg(dev, ADV761X_KSV_MAP, 0x74, 0x01);
+    // program and enable EDID
+    adv761x_update_edid(dev, dev->cfg.edid_sel);
 
     // enable TMDS termination
     adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REGISTER_02H, 0x00);
@@ -162,6 +163,40 @@ void adv761x_get_default_cfg(adv761x_config *cfg) {
 void adv761x_enable_power(adv761x_dev *dev, int enable) {
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_0C, (!enable)<<5);
     dev->powered_on = enable;
+}
+
+int adv761x_update_edid(adv761x_dev *dev, unsigned edid_id) {
+    int i;
+    const edid_t *target_edid = dev->edid_list[edid_id];
+
+    // check if length is valid
+    if ((target_edid->data[126]+1)*128 != target_edid->len)
+        return -1;
+
+    // check if EDID enabled on port
+    if (adv761x_readreg(dev, ADV761X_KSV_MAP, 0x76) & 0x01) {
+        // return if requested EDID is already active
+        if (edid_id == dev->cfg.edid_sel)
+            return 0;
+
+        // disable EDID and reset E-EDID controller
+        adv761x_writereg(dev, ADV761X_KSV_MAP, 0x74, 0x00);
+        adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_5AH, (1<<3));
+        usleep(100000);
+    }
+
+    adv761x_writereg(dev, ADV761X_KSV_MAP, 0x7a, 4);
+
+    for (i=0; i<target_edid->len; i++) {
+        if (i == 256)
+            adv761x_writereg(dev, ADV761X_KSV_MAP, 0x7a, 5);
+        adv761x_writereg(dev, ADV761X_EDID_MAP, (i%256), target_edid->data[i]);
+    }
+
+    // enable EDID on port
+    adv761x_writereg(dev, ADV761X_KSV_MAP, 0x74, 0x01);
+
+    return 0;
 }
 
 void adv761x_set_default_rgb_range(adv761x_dev *dev, adv761x_rgb_range rng) {
@@ -382,6 +417,8 @@ void adv761x_update_config(adv761x_dev *dev, adv761x_config *cfg) {
         adv761x_set_default_rgb_range(dev, cfg->default_rgb_range);
     if (cfg->pixelderep_mode != dev->cfg.pixelderep_mode)
         adv761x_set_pixelderep(dev, cfg->pixelderep_mode);
+    if (cfg->edid_sel != dev->cfg.edid_sel)
+        adv761x_update_edid(dev, cfg->edid_sel);
     if (audio_sample_type != dev->audio_sample_type) {
         adv761x_set_spdif_mux(dev, (audio_sample_type == IEC60958_SAMPLE_NONPCM));
         dev->audio_sample_type = audio_sample_type;
