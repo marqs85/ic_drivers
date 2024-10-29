@@ -33,6 +33,8 @@ const adv7280a_config adv7280a_cfg_default = {
     .comb_str_pal = 1,
     .comb_ctaps_pal = 2,
     .comb_ctaps_ntsc = 1,
+    .cti_ab = 3,
+    .cti_c_th = 8,
 };
 
 void adv7280a_writereg(adv7280a_dev *dev, uint8_t regaddr, uint8_t data) {
@@ -99,6 +101,7 @@ int adv7280a_init(adv7280a_dev *dev) {
     // set default levels and filter settings
     adv7280a_set_levels(dev, dev->cfg.brightness, dev->cfg.contrast, dev->cfg.hue);
     adv7280a_set_shfilt(dev, dev->cfg.sh_filt_y, dev->cfg.sh_filt_c);
+    adv7280a_set_cti(dev, dev->cfg.cti_ab, dev->cfg.cti_c_th);
     adv7280a_set_combfilt(dev, &dev->cfg);
 
     adv7280a_enable_power(dev, 0);
@@ -133,6 +136,11 @@ void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast
 
 void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c) {
     adv7280a_writereg(dev, 0x17, (sh_filt_c<<5) | sh_filt_y);
+}
+
+void adv7280a_set_cti(adv7280a_dev *dev, uint8_t cti_ab, uint8_t cti_c_th) {
+    adv7280a_writereg(dev, 0x4d, (0xe3|(cti_ab<<2)));
+    adv7280a_writereg(dev, 0x4e, cti_c_th);
 }
 
 void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg) {
@@ -192,6 +200,8 @@ void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg) {
             adv7280a_set_shfilt(dev, cfg->sh_filt_y, cfg->sh_filt_c);
         if (memcmp(&cfg->comb_str_pal, &dev->cfg.comb_str_pal, sizeof(adv7280a_config) - offsetof(adv7280a_config, comb_str_pal)))
             adv7280a_set_combfilt(dev, cfg);
+        if ((cfg->cti_ab != dev->cfg.cti_ab) || (cfg->cti_c_th != dev->cfg.cti_c_th))
+            adv7280a_set_cti(dev, cfg->cti_ab, cfg->cti_c_th);
 
         memcpy(&dev->cfg, cfg, sizeof(adv7280a_config));
     }
