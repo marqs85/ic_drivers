@@ -26,6 +26,9 @@
 
 #define PCLK_HZ_TOLERANCE 1000000UL
 
+// Spoof XTAL frequency to a lower value get past 165MHz soft limitation for pclk
+#define SPOOF_XTAL_FREQ
+
 const adv761x_config adv761x_cfg_default = {
     .default_rgb_range = ADV761X_RGB_LIMITED,
     .pixelderep_mode = 1,
@@ -115,7 +118,11 @@ void adv761x_init(adv761x_dev *dev) {
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_15, 0x00);
 
     // Component order and XTAL freq select
+#ifdef SPOOF_XTAL_FREQ
+    adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_04, 0x66);
+#else
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_04, 0x60);
+#endif
 
     // pixel output port config
     adv761x_writereg(dev, ADV761X_IO_MAP, ADV761X_IO_REG_03, 0x40);
@@ -338,6 +345,9 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
 
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_2);
     pclk_hz = (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TMDSFREQ_1) << 1) | (regval >> 7))*1000000 + ((1000000*(regval & 0x7f)) / 128)) / (pixelderep + 1);
+#ifdef SPOOF_XTAL_FREQ
+    pclk_hz = (9*pclk_hz)/8;
+#endif
 
     // check if input is deepcolor
     if (hdmi_mode) {
