@@ -160,7 +160,7 @@ void sii1136_update_infoframe(sii1136_dev *dev, HDMI_infoframe_id_t type, HDMI_i
         sii1136_writereg(dev, 0xC1, ver);
         sii1136_writereg(dev, 0xC2, len);
 
-        for (ifr_reg=0xC4; ifr_reg<=0xC3+len; ifr_reg++)
+        for (ifr_reg=0xC4; ifr_reg<0xC3+len; ifr_reg++)
             crc += sii1136_readreg(dev, ifr_reg);
 
         crc += lastbyte;
