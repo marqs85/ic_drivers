@@ -198,7 +198,7 @@ void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg) {
             adv7280a_set_levels(dev, cfg->brightness, cfg->contrast, cfg->hue);
         if ((cfg->sh_filt_y != dev->cfg.sh_filt_y) || (cfg->sh_filt_c != dev->cfg.sh_filt_c))
             adv7280a_set_shfilt(dev, cfg->sh_filt_y, cfg->sh_filt_c);
-        if (memcmp(&cfg->comb_str_pal, &dev->cfg.comb_str_pal, sizeof(adv7280a_config) - offsetof(adv7280a_config, comb_str_pal)))
+        if (memcmp(&cfg->comb_str_pal, &dev->cfg.comb_str_pal, 8*sizeof(uint8_t)))
             adv7280a_set_combfilt(dev, cfg);
         if ((cfg->cti_ab != dev->cfg.cti_ab) || (cfg->cti_c_th != dev->cfg.cti_c_th))
             adv7280a_set_cti(dev, cfg->cti_ab, cfg->cti_c_th);
