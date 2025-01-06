@@ -1,0 +1,3 @@
+[submodule "si2177/video_si21xx_superset"]
+	path = si2177/video_si21xx_superset
+	url = git@github.com:marqs85/video_si21xx_superset.git
