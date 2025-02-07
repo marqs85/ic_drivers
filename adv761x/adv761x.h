@@ -54,6 +54,7 @@ typedef struct {
     uint8_t interlace_flag;
     uint8_t h_polarity;
     uint8_t v_polarity;
+    int8_t f_pix_adder;
 } adv761x_sync_status;
 
 typedef struct {

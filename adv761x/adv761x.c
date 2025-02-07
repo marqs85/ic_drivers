@@ -275,13 +275,13 @@ int adv761x_check_activity(adv761x_dev *dev) {
 }
 
 int adv761x_get_sync_stats(adv761x_dev *dev) {
-    int mode_changed = 0, dv1_pr = 0, dv1_menu;
+    int mode_changed = 0, dv1_pr = 0, dv1_menu, i;
     adv761x_sync_status ss = {0};
     uint32_t pclk_hz;
     uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
     uint8_t regval;
     uint16_t de_h, de_v;
-    char dv_id[3];
+    char dv_id[3], dv_corename[16];
 
     ss.interlace_flag = !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & (1<<5));
 
@@ -340,6 +340,14 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
                 ss.h_backporch = de_h;
                 ss.v_backporch = de_v ? de_v - 1 : 0; // fix vertical offset with most cores
             }
+
+            for (i=0; i<15; i++)
+                dv_corename[i] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1+13+i);
+            dv_corename[15] = 0;
+
+            // SNES 240p adjust (-8 clocks every other fframe)
+            if ((strncmp(dv_corename, "SNES", 4) == 0) && (ss.v_total == 262) && (ss.h_total == 2728))
+                ss.f_pix_adder = -4;
         }
     }
 
@@ -392,7 +400,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         printf("advrx interlace_flag: %u\n", ss.interlace_flag);
         printf("advrx pclk: %luHz\n", pclk_hz);
         printf("advrx pixelderep: %u (IFR: %u)\n", pixelderep, pixelderep_ifr);
-        printf("advrx hdmi_mode: %u %s\n", hdmi_mode, dv1_pr ? "(DV1)" : "");
+        printf("advrx hdmi_mode: %u%s%s\n", hdmi_mode, dv1_pr ? ", DV1: " : "", dv1_pr ? dv_corename : "");
     }
 
     memcpy(&dev->ss, &ss, sizeof(adv761x_sync_status));
