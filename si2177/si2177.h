@@ -36,7 +36,8 @@ typedef struct {
 } si2177_channel;
 
 typedef struct {
-    uint8_t tv_std;
+    uint8_t audio_sys;
+    uint8_t audio_demod_mode;
     uint8_t ch_idx;
     si2177_channel chlist[MAX_POSSIBLE_CHANNELS];
 } si2177_config;
@@ -56,8 +57,14 @@ void si2177_get_default_cfg(si2177_config *cfg);
 
 void si2177_update_config(si2177_dev *dev, si2177_config *cfg);
 
-int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist);
+int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist, uint8_t tv_std_id_idx, uint32_t start_freq, uint32_t stop_freq);
 
 int si2177_tune(si2177_dev *dev, si2177_channel *ch);
+
+int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode);
+
+int si2177_set_video_eq(si2177_dev *dev, uint8_t eq_slope);
+
+int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain);
 
 #endif /* SI2177_H_ */

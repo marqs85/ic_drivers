@@ -24,9 +24,14 @@
 #include "sysconfig.h"
 #include "i2c_opencores.h"
 
+const unsigned char tv_std_id_arr[] = { Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_M, Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_B, Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_I };
+const char* const tv_std_name_arr[] = { "NTSC M", "PAL B/G/H", "PAL I" };
+
 const si2177_config si2177_cfg_default = {
-    .tv_std = 0,
-    .ch_idx = 0
+    .ch_idx = 0,
+    /* ref. Si2177_L1_User_Properties.c */
+    .audio_sys = Si2177_ATV_AUDIO_MODE_PROP_AUDIO_SYS_DEFAULT,
+    .audio_demod_mode = Si2177_ATV_AUDIO_MODE_PROP_DEMOD_MODE_FM1
 };
 
 void si2177_get_default_cfg(si2177_config *cfg) {
@@ -59,6 +64,8 @@ int si2177_init(si2177_dev *dev) {
 
 void si2177_update_config(si2177_dev *dev, si2177_config *cfg) {
     if (dev->powered_on) {
+        if ((dev->cfg.audio_sys != cfg->audio_sys) || (dev->cfg.audio_demod_mode != cfg->audio_demod_mode))
+            si2177_set_audiomode(dev, cfg->audio_sys, cfg->audio_demod_mode);
         if (memcmp(&dev->ch, &cfg->chlist[cfg->ch_idx], sizeof(si2177_channel)))
             si2177_tune(dev, &cfg->chlist[cfg->ch_idx]);
 
@@ -67,29 +74,38 @@ void si2177_update_config(si2177_dev *dev, si2177_config *cfg) {
     }
 }
 
-int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist) {
+int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist, uint8_t tv_std_id_idx, uint32_t start_freq, uint32_t stop_freq) {
     int retval, i;
 
     if (!dev->powered_on)
         return -1;
 
-    printf("Channelscan %s - atv_rsq_rssi_threshold.lo: %u, atv_rsq_rssi_threshold.hi: %u, atv_rsq_snr_threshold.lo: %u, atv_rsq_snr_threshold.hi: %u\n",
-            dev->cfg.tv_std ? "PAL" : "NTSC",
+    printf("Channelscan %s (%uMHz-%uMHz) - atv_rsq_rssi_threshold.lo: %u, atv_rsq_rssi_threshold.hi: %u, atv_rsq_snr_threshold.lo: %u, atv_rsq_snr_threshold.hi: %u\n",
+            tv_std_name_arr[tv_std_id_idx], start_freq/1000000, stop_freq/1000000,
             dev->l1_ctx.prop->atv_rsq_rssi_threshold.lo, dev->l1_ctx.prop->atv_rsq_rssi_threshold.hi, dev->l1_ctx.prop->atv_rsq_snr_threshold.lo, dev->l1_ctx.prop->atv_rsq_snr_threshold.hi);
 
-    if (dev->cfg.tv_std == 0) {
-        retval = Si2177_ATV_Channel_Scan_M(&dev->l1_ctx,Si2177_TUNER_TUNE_FREQ_CMD_FREQ_MIN,Si2177_TUNER_TUNE_FREQ_CMD_FREQ_MAX,
+    if (tv_std_id_arr[tv_std_id_idx] == Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_M) {
+        retval = Si2177_ATV_Channel_Scan_M(&dev->l1_ctx, start_freq, stop_freq,
                                 dev->l1_ctx.prop->atv_rsq_rssi_threshold.lo,
                                 dev->l1_ctx.prop->atv_rsq_rssi_threshold.hi,
                                 dev->l1_ctx.prop->atv_rsq_snr_threshold.lo,
                                 dev->l1_ctx.prop->atv_rsq_snr_threshold.hi);
     } else {
-        retval = Si2177_ATV_Channel_Scan_PAL(&dev->l1_ctx,Si2177_TUNER_TUNE_FREQ_CMD_FREQ_MIN,Si2177_TUNER_TUNE_FREQ_CMD_FREQ_MAX,
+        retval = Si2177_ATV_Channel_Scan_PAL(&dev->l1_ctx, tv_std_id_arr[tv_std_id_idx], start_freq, stop_freq,
                                 dev->l1_ctx.prop->atv_rsq_rssi_threshold.lo,
                                 dev->l1_ctx.prop->atv_rsq_rssi_threshold.hi,
                                 dev->l1_ctx.prop->atv_rsq_snr_threshold.lo,
                                 dev->l1_ctx.prop->atv_rsq_snr_threshold.hi);
     }
+
+    // Restore params which are modified by scan
+    dev->l1_ctx.prop->atv_video_mode.video_sys = tv_std_id_arr[tv_std_id_idx];
+    dev->l1_ctx.prop->atv_video_mode.color     = Si2177_ATV_VIDEO_MODE_PROP_COLOR_PAL_NTSC;
+    dev->l1_ctx.prop->atv_audio_mode.audio_sys = dev->cfg.audio_sys;
+    dev->l1_ctx.prop->atv_afc_range.range_khz  = 1000;
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_VIDEO_MODE_PROP);
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_AUDIO_MODE_PROP);
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_AFC_RANGE_PROP);
 
     if (retval != NO_Si2177_ERROR) {
         printf("Scan failed\n");
@@ -101,7 +117,7 @@ int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist) {
     for (i=0; i < dev->l1_ctx.ChannelListSize; i++) {
         printf("%d\t%s\t%ld\n",i, dev->l1_ctx.ChannelType[i], dev->l1_ctx.ChannelList[i]);
         chlist[i].freq = dev->l1_ctx.ChannelList[i];
-        chlist[i].tv_system = (dev->l1_ctx.ChannelType[i][0] == 'M') ? Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_M : Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_B;
+        chlist[i].tv_system = tv_std_id_arr[tv_std_id_idx];
     }
 
     // Enforce re-tune of selected channel after scan
@@ -135,3 +151,29 @@ int si2177_tune(si2177_dev *dev, si2177_channel *ch) {
 
     return 0;
 }
+
+int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode) {
+    dev->l1_ctx.prop->atv_audio_mode.audio_sys = audio_sys;
+    dev->l1_ctx.prop->atv_audio_mode.demod_mode = demod_mode;
+
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_AUDIO_MODE_PROP);
+    si2177_tune(dev, &dev->cfg.chlist[dev->cfg.ch_idx]);
+
+    return 0;
+}
+
+#if 0
+int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain) {
+    dev->l1_ctx.prop->atv_cvbs_out.amp = gain;
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_CVBS_OUT_PROP);
+
+    return 0;
+}
+
+int si2177_set_video_eq(si2177_dev *dev, uint8_t eq_slope) {
+    dev->l1_ctx.prop->atv_video_equalizer.slope = eq_slope-128;
+    Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_VIDEO_EQUALIZER_PROP);
+
+    return 0;
+}
+#endif
