@@ -102,6 +102,7 @@ int adv7280a_init(adv7280a_dev *dev) {
     adv7280a_set_levels(dev, dev->cfg.brightness, dev->cfg.contrast, dev->cfg.hue);
     adv7280a_set_shfilt(dev, dev->cfg.sh_filt_y, dev->cfg.sh_filt_c);
     adv7280a_set_cti(dev, dev->cfg.cti_ab, dev->cfg.cti_c_th);
+    adv7280a_set_ifcomp(dev, dev->cfg.if_comp);
     adv7280a_set_combfilt(dev, &dev->cfg);
 
     adv7280a_enable_power(dev, 0);
@@ -141,6 +142,10 @@ void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c
 void adv7280a_set_cti(adv7280a_dev *dev, uint8_t cti_ab, uint8_t cti_c_th) {
     adv7280a_writereg(dev, 0x4d, (0xe3|(cti_ab<<2)));
     adv7280a_writereg(dev, 0x4e, cti_c_th);
+}
+
+void adv7280a_set_ifcomp(adv7280a_dev *dev, uint8_t if_comp) {
+    adv7280a_writereg(dev, 0xf8, (if_comp<4) ? if_comp : (if_comp+1));
 }
 
 void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg) {
@@ -202,6 +207,8 @@ void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg) {
             adv7280a_set_combfilt(dev, cfg);
         if ((cfg->cti_ab != dev->cfg.cti_ab) || (cfg->cti_c_th != dev->cfg.cti_c_th))
             adv7280a_set_cti(dev, cfg->cti_ab, cfg->cti_c_th);
+        if (cfg->if_comp != dev->cfg.if_comp)
+            adv7280a_set_ifcomp(dev, cfg->if_comp);
 
         memcpy(&dev->cfg, cfg, sizeof(adv7280a_config));
     }

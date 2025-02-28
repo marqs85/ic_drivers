@@ -66,6 +66,7 @@ typedef struct {
     uint8_t comb_ymode_ntsc;
     uint8_t cti_ab;
     uint8_t cti_c_th;
+    uint8_t if_comp;
 } adv7280a_config;
 
 typedef struct {
@@ -92,6 +93,8 @@ void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast
 void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c);
 
 void adv7280a_set_cti(adv7280a_dev *dev, uint8_t cti_ab, uint8_t cti_c_th);
+
+void adv7280a_set_ifcomp(adv7280a_dev *dev, uint8_t if_comp);
 
 void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg);
 
