@@ -31,7 +31,7 @@ const si2177_config si2177_cfg_default = {
     .ch_idx = 0,
     /* ref. Si2177_L1_User_Properties.c */
     .audio_sys = Si2177_ATV_AUDIO_MODE_PROP_AUDIO_SYS_DEFAULT,
-    .audio_demod_mode = Si2177_ATV_AUDIO_MODE_PROP_DEMOD_MODE_FM1
+    .audio_demod_mode = Si2177_ATV_AUDIO_MODE_PROP_DEMOD_MODE_FM1-Si2177_ATV_AUDIO_MODE_PROP_DEMOD_MODE_AM
 };
 
 void si2177_get_default_cfg(si2177_config *cfg) {
@@ -66,8 +66,10 @@ void si2177_update_config(si2177_dev *dev, si2177_config *cfg) {
     if (dev->powered_on) {
         if ((dev->cfg.audio_sys != cfg->audio_sys) || (dev->cfg.audio_demod_mode != cfg->audio_demod_mode))
             si2177_set_audiomode(dev, cfg->audio_sys, cfg->audio_demod_mode);
-        if (memcmp(&dev->ch, &cfg->chlist[cfg->ch_idx], sizeof(si2177_channel)))
+        if ((dev->ch.freq != cfg->chlist[cfg->ch_idx].freq) || (dev->ch.tv_system != cfg->chlist[cfg->ch_idx].tv_system))
             si2177_tune(dev, &cfg->chlist[cfg->ch_idx]);
+        if (dev->ch.ft_offset != cfg->chlist[cfg->ch_idx].ft_offset)
+            si2177_fine_tune(dev, &cfg->chlist[cfg->ch_idx]);
 
         memcpy(&dev->cfg, cfg, sizeof(si2177_config));
         memcpy(&dev->ch, &cfg->chlist[cfg->ch_idx], sizeof(si2177_channel));
@@ -79,6 +81,9 @@ int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist, uint8_t tv_std_i
 
     if (!dev->powered_on)
         return -1;
+
+    // Ensure user offset does not affect scan
+    Si2177_L1_FINE_TUNE(&dev->l1_ctx, 1, 1, 0);
 
     printf("Channelscan %s (%uMHz-%uMHz) - atv_rsq_rssi_threshold.lo: %u, atv_rsq_rssi_threshold.hi: %u, atv_rsq_snr_threshold.lo: %u, atv_rsq_snr_threshold.hi: %u\n",
             tv_std_name_arr[tv_std_id_idx], start_freq/1000000, stop_freq/1000000,
@@ -117,6 +122,7 @@ int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist, uint8_t tv_std_i
     for (i=0; i < dev->l1_ctx.ChannelListSize; i++) {
         printf("%d\t%s\t%ld\n",i, dev->l1_ctx.ChannelType[i], dev->l1_ctx.ChannelList[i]);
         chlist[i].freq = dev->l1_ctx.ChannelList[i];
+        chlist[i].ft_offset = 0;
         chlist[i].tv_system = tv_std_id_arr[tv_std_id_idx];
     }
 
@@ -152,9 +158,31 @@ int si2177_tune(si2177_dev *dev, si2177_channel *ch) {
     return 0;
 }
 
+int si2177_fine_tune(si2177_dev *dev, si2177_channel *ch) {
+    unsigned char retval;
+
+    if (!dev->powered_on) {
+        return -1;
+    } else if (!ch->freq) {
+        printf("Invalid channel\n");
+        return -1;
+    }
+
+    printf("Fine-tuning with offset %dkHz\n", ch->ft_offset/2);
+
+    retval = Si2177_L1_FINE_TUNE(&dev->l1_ctx, 1, 1, ch->ft_offset);
+
+    if (retval != NO_Si2177_ERROR) {
+        printf("Fine-tune failed\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode) {
     dev->l1_ctx.prop->atv_audio_mode.audio_sys = audio_sys;
-    dev->l1_ctx.prop->atv_audio_mode.demod_mode = demod_mode;
+    dev->l1_ctx.prop->atv_audio_mode.demod_mode = demod_mode+Si2177_ATV_AUDIO_MODE_PROP_DEMOD_MODE_AM;
 
     Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_AUDIO_MODE_PROP);
     si2177_tune(dev, &dev->cfg.chlist[dev->cfg.ch_idx]);

@@ -32,6 +32,7 @@
 
 typedef struct {
     uint32_t freq;
+    int16_t ft_offset;
     uint8_t tv_system;
 } si2177_channel;
 
@@ -60,6 +61,8 @@ void si2177_update_config(si2177_dev *dev, si2177_config *cfg);
 int si2177_channelscan(si2177_dev *dev, si2177_channel *chlist, uint8_t tv_std_id_idx, uint32_t start_freq, uint32_t stop_freq);
 
 int si2177_tune(si2177_dev *dev, si2177_channel *ch);
+
+int si2177_fine_tune(si2177_dev *dev, si2177_channel *ch);
 
 int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode);
 
