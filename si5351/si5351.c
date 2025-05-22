@@ -440,6 +440,14 @@ int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch
     return 0;
 }
 
+void si5351_disable_outputs(si5351_dev *dev, uint8_t out_ch_mask) {
+    uint8_t acc_reg;
+
+    acc_reg = si5351_readreg(dev, SI5351_OEN_CTRL);
+    acc_reg |= out_ch_mask;
+    si5351_writereg(dev, SI5351_OEN_CTRL, acc_reg);
+}
+
 void si5351_init(si5351_dev *dev) {
     int i;
     uint8_t ret;

@@ -80,6 +80,8 @@ int si5351_set_frac_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch ou
 
 int si5351_set_integer_mult(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_out_ch out_ch, si5351_clk_src clksrc, uint32_t clkin_hz, uint8_t mult, uint8_t outdiv);
 
+void si5351_disable_outputs(si5351_dev *dev, uint8_t out_ch_mask);
+
 void si5351_init(si5351_dev *dev);
 
 #endif /* SI5351_H_ */
