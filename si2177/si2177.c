@@ -26,6 +26,8 @@
 
 const unsigned char tv_std_id_arr[] = { Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_M, Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_B, Si2177_ATV_VIDEO_MODE_PROP_VIDEO_SYS_I };
 const char* const tv_std_name_arr[] = { "NTSC M", "PAL B/G/H", "PAL I" };
+const uint8_t cvbs_gain_arr[] = {87, 200};
+const uint8_t cvbs_offset = 25;
 
 const si2177_config si2177_cfg_default = {
     .ch_idx = 0,
@@ -70,6 +72,8 @@ void si2177_update_config(si2177_dev *dev, si2177_config *cfg) {
             si2177_tune(dev, &cfg->chlist[cfg->ch_idx]);
         if (dev->ch.ft_offset != cfg->chlist[cfg->ch_idx].ft_offset)
             si2177_fine_tune(dev, &cfg->chlist[cfg->ch_idx]);
+        if (dev->cfg.cvbs_gain_sel != cfg->cvbs_gain_sel)
+            si2177_set_cvbs_params(dev, cvbs_gain_arr[cfg->cvbs_gain_sel], cvbs_offset);
 
         memcpy(&dev->cfg, cfg, sizeof(si2177_config));
         memcpy(&dev->ch, &cfg->chlist[cfg->ch_idx], sizeof(si2177_channel));
@@ -190,14 +194,15 @@ int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode)
     return 0;
 }
 
-#if 0
-int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain) {
+int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain, uint8_t offset) {
     dev->l1_ctx.prop->atv_cvbs_out.amp = gain;
+    dev->l1_ctx.prop->atv_cvbs_out.offset = offset;
     Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_CVBS_OUT_PROP);
 
     return 0;
 }
 
+#if 0
 int si2177_set_video_eq(si2177_dev *dev, uint8_t eq_slope) {
     dev->l1_ctx.prop->atv_video_equalizer.slope = eq_slope-128;
     Si2177_L1_SetProperty2(&dev->l1_ctx, Si2177_ATV_VIDEO_EQUALIZER_PROP);

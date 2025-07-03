@@ -40,6 +40,7 @@ typedef struct {
     uint8_t audio_sys;
     uint8_t audio_demod_mode;
     uint8_t ch_idx;
+    uint8_t cvbs_gain_sel;
     si2177_channel chlist[MAX_POSSIBLE_CHANNELS];
 } si2177_config;
 
@@ -66,8 +67,8 @@ int si2177_fine_tune(si2177_dev *dev, si2177_channel *ch);
 
 int si2177_set_audiomode(si2177_dev *dev, uint8_t audio_sys, uint8_t demod_mode);
 
-int si2177_set_video_eq(si2177_dev *dev, uint8_t eq_slope);
+int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain, uint8_t offset);
 
-int si2177_set_cvbs_params(si2177_dev *dev, uint8_t gain);
+int si2177_set_video_eq(si2177_dev *dev, uint8_t eq_slope);
 
 #endif /* SI2177_H_ */
