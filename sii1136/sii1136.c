@@ -137,6 +137,19 @@ void sii1136_enable_tmds_output(sii1136_dev *dev, int enable) {
     sii1136_writereg(dev, SII1136_SYSCTRL, regval);
 }
 
+void sii1136_enable_avmute(sii1136_dev *dev, int enable) {
+    uint8_t regval;
+
+    regval = sii1136_readreg(dev, SII1136_SYSCTRL);
+
+    if (enable)
+        regval |= (1<<3);
+    else
+        regval &= ~(1<<3);
+
+    sii1136_writereg(dev, SII1136_SYSCTRL, regval);
+}
+
 void sii1136_update_infoframe(sii1136_dev *dev, HDMI_infoframe_id_t type, HDMI_infoframe_ver_t ver, HDMI_infoframe_len_t len, uint8_t lastbyte) {
     uint8_t ifr_reg;
     uint8_t crc;
@@ -327,7 +340,11 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
     uint8_t regval;
 
     // Disable TMDS output (skip to avoid interruption)
-    //sii1136_enable_tmds_output(dev, 0);
+    if (dev->cfg.full_tx_setup) {
+        sii1136_enable_avmute(dev, 1);
+        usleep(128000);
+        sii1136_enable_tmds_output(dev, 0);
+    }
 
     // Set pclk
     sii1136_writereg(dev, SII1136_PCLK_LSB, (pclk_hz/10000) & 0xff);
@@ -347,6 +364,9 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
 
     // Enable TMDS output
     sii1136_enable_tmds_output(dev, 1);
+
+    if (dev->cfg.full_tx_setup)
+        sii1136_enable_avmute(dev, 0);
 
     // Set pixelrep
     sii1136_writereg(dev, SII1136_INPUTBUSFMT, ((1+pixelrep)<<6) | (1<<5) | (1<<4));
