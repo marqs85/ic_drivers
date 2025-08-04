@@ -58,10 +58,18 @@ typedef struct {
 } si5351_pll_msn_config_t;
 
 typedef struct {
+    uint32_t p1;
+    uint32_t p2;
+    uint32_t p3;
+    uint8_t divby4;
+} si5351_out_ms_config_t;
+
+typedef struct {
     uint32_t i2cm_base;
     uint8_t i2c_addr;
     uint32_t xtal_freq;
     si5351_pll_msn_config_t pll_msn_config[2];
+    si5351_out_ms_config_t out_ms_config[8];
 } si5351_dev;
 
 typedef struct {
