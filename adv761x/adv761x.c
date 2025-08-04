@@ -255,9 +255,9 @@ int adv761x_check_activity(adv761x_dev *dev) {
     retval = adv761x_readreg(ADV761X_KSV_BASE, 0x76);
     printf("edid enable: 0x%lx\n", retval);*/
 
-    // check V_LOCKED_RAW
+    // check DE_REGEN_LCK_RAW
     sync_activity = adv761x_readreg(dev, ADV761X_IO_MAP, ADV761X_HDMI_LVL_RAW_STAT_3);
-    sync_active = !!(sync_activity & 0x2);
+    sync_active = !!(sync_activity & 0x1);
 
     if (sync_active != dev->sync_active) {
         activity_change = 1;
@@ -283,6 +283,22 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     uint16_t de_h, de_v;
     char dv_id[3], dv_corename[16];
 
+    ss.h_total = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TOTAL_LINE_WIDTH_1) & 0x3f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TOTAL_LINE_WIDTH_2);
+    ss.h_synclen = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_PULSEWIDTH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_PULSEWIDTH_2);
+    ss.h_backporch = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_BACKPORCH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_BACKPORCH_2);
+    ss.h_active = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_LINE_WIDTH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_LINE_WIDTH_2);
+
+    // check if NEW_VS_PARAM needs to be set
+    regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_4CH);
+    if ((ss.h_total-ss.h_active > ss.h_active) && !(regval & (1<<2)))
+        adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_4CH, (regval | (1<<2)));
+    else if ((ss.h_total-ss.h_active <= ss.h_active) && (regval & (1<<2)))
+        adv761x_writereg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_4CH, (regval & ~(1<<2)));
+
+    // Check if V params are valid
+    if (!(adv761x_readreg(dev, ADV761X_IO_MAP, ADV761X_HDMI_LVL_RAW_STAT_3) & (1<<1)))
+        return 0;
+
     ss.interlace_flag = !!(adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & (1<<5));
 
     if (!ss.interlace_flag) {
@@ -300,11 +316,6 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         ss.v_active = ((((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD0_HEIGHT_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD0_HEIGHT_2)) +
                        (((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_FIELD1_HEIGHT_2)))/2;
     }
-
-    ss.h_total = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TOTAL_LINE_WIDTH_1) & 0x3f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_TOTAL_LINE_WIDTH_2);
-    ss.h_synclen = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_PULSEWIDTH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_PULSEWIDTH_2);
-    ss.h_backporch = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_BACKPORCH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HSYNC_BACKPORCH_2);
-    ss.h_active = ((adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_LINE_WIDTH_1) & 0x1f) << 8) | adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_LINE_WIDTH_2);
 
     regval = adv761x_readreg(dev, ADV761X_HDMI_MAP, ADV761X_HDMI_REG_05H);
     ss.h_polarity = !!(regval & (1<<5));
