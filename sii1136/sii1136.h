@@ -44,6 +44,7 @@ typedef struct {
     uint8_t powered_on;
     uint8_t pixelrep;
     uint8_t pixelrep_infoframe;
+    uint32_t pclk_hz;
     HDMI_vic_t vic;
     sii1136_config cfg;
 } sii1136_dev;

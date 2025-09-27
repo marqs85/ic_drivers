@@ -57,6 +57,7 @@ int sii1136_init(sii1136_dev *dev) {
     uint8_t regval;
 
     memcpy(&dev->cfg, &sii1136_cfg_default, sizeof(sii1136_config));
+    dev->pixelrep = dev->pixelrep_infoframe = dev->vic = dev->pclk_hz = 0;
 
     // Enable TPI mode
     sii1136_writereg(dev, SII1136_TPI_ENABLE, 0x00);
@@ -339,6 +340,10 @@ void sii1136_set_tx_mode(sii1136_dev *dev, HDMI_tx_mode_t mode) {
 void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_infoframe, HDMI_vic_t vic, uint32_t pclk_hz) {
     uint8_t regval;
 
+    // skip mode setup if no changes (allow 10% variation in pixel clock)
+    if ((pixelrep == dev->pixelrep) && (pixelrep_infoframe == dev->pixelrep_infoframe) && (vic == dev->vic) && (pclk_hz >= ((9*dev->pclk_hz)/10)) && (pclk_hz <= ((11*dev->pclk_hz)/10)))
+        return;
+
     // Disable TMDS output (skip to avoid interruption)
     if (dev->cfg.full_tx_setup) {
         sii1136_enable_avmute(dev, 1);
@@ -373,6 +378,7 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
 
     dev->pixelrep = pixelrep;
     dev->pixelrep_infoframe = pixelrep_infoframe;
+    dev->pclk_hz = pclk_hz;
     dev->vic = vic;
 }
 
