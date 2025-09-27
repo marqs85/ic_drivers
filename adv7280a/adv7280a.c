@@ -30,11 +30,18 @@ const adv7280a_config adv7280a_cfg_default = {
     .contrast = 128,
     .hue = 128,
     .sh_filt_y = 1,
+    .sh_filt_y2 = 19,
     .comb_str_pal = 1,
     .comb_ctaps_pal = 2,
     .comb_ctaps_ntsc = 1,
+    .cti_en = 1,
     .cti_ab = 3,
     .cti_c_th = 8,
+    .dnr_en = 1,
+    .dnr1_th = 8,
+    .dnr2_th = 0,
+    .y_gain = 128,
+    .c_gain = 128,
 };
 
 void adv7280a_writereg(adv7280a_dev *dev, uint8_t regaddr, uint8_t data) {
@@ -99,9 +106,10 @@ int adv7280a_init(adv7280a_dev *dev) {
     adv7280a_writereg(dev, 0x35, 0xa);
 
     // set default levels and filter settings
+    adv7280a_set_gains(dev, dev->cfg.y_gain_mode, dev->cfg.y_gain, dev->cfg.c_gain_mode, dev->cfg.c_gain);
     adv7280a_set_levels(dev, dev->cfg.brightness, dev->cfg.contrast, dev->cfg.hue);
-    adv7280a_set_shfilt(dev, dev->cfg.sh_filt_y, dev->cfg.sh_filt_c);
-    adv7280a_set_cti(dev, dev->cfg.cti_ab, dev->cfg.cti_c_th);
+    adv7280a_set_shfilt(dev, dev->cfg.sh_filt_y, dev->cfg.sh_filt_y2, dev->cfg.sh_filt_c);
+    adv7280a_set_cti_dnr(dev, dev->cfg.cti_en, dev->cfg.cti_ab, dev->cfg.cti_c_th, dev->cfg.dnr_en, dev->cfg.dnr1_th, dev->cfg.dnr2_th);
     adv7280a_set_ifcomp(dev, dev->cfg.if_comp);
     adv7280a_set_combfilt(dev, &dev->cfg);
 
@@ -121,12 +129,24 @@ void adv7280a_select_input(adv7280a_dev *dev, adv7280a_input input) {
     adv7280a_writereg(dev, 0x9C, 0x00);
     adv7280a_writereg(dev, 0x9C, 0xFF);
     adv7280a_writereg(dev, 0x0E, 0x00);
-
-    adv7280a_writereg(dev, 0x17, (input <= ADV7280A_INPUT_CVBS_AIN4) ? 0x41 : 0x01);
 }
 
 void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal) {
     adv7280a_writereg(dev, ADV7280A_VIDSEL2, (ntsc_pedestal<<4)|0x4);
+}
+
+void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint8_t y_gain, uint8_t c_gain_mode, uint8_t c_gain) {
+    // luma gain reference = 1024/0.68 = 0x5e2
+    const uint16_t y_gain_ref = 0x5e2;
+    const uint16_t c_gain_ref = 0x400;
+    uint16_t y_gain_reg = y_gain_ref + 2*(int8_t)(y_gain-128);
+    uint16_t c_gain_reg = c_gain_ref + 2*(int8_t)(c_gain-128);
+
+    adv7280a_writereg(dev, 0x2c, ((1<<7) | (y_gain_mode << 4) | (3<<2) | c_gain_mode));
+    adv7280a_writereg(dev, 0x2d, (0xf0 | (c_gain_reg >> 8)));
+    adv7280a_writereg(dev, 0x2e, (c_gain_reg & 0xff));
+    adv7280a_writereg(dev, 0x2f, (0xf0 | (y_gain_reg >> 8)));
+    adv7280a_writereg(dev, 0x30, (y_gain_reg & 0xff));
 }
 
 void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast, uint8_t hue) {
@@ -135,13 +155,16 @@ void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast
     adv7280a_writereg(dev, 0x0b, hue-128);
 }
 
-void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c) {
+void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_y2, uint8_t sh_filt_c) {
     adv7280a_writereg(dev, 0x17, (sh_filt_c<<5) | sh_filt_y);
+    adv7280a_writereg(dev, 0x18, (sh_filt_y2 < 2) ? 0x13 : ((1<<7) | sh_filt_y2));
 }
 
-void adv7280a_set_cti(adv7280a_dev *dev, uint8_t cti_ab, uint8_t cti_c_th) {
-    adv7280a_writereg(dev, 0x4d, (0xe3|(cti_ab<<2)));
+void adv7280a_set_cti_dnr(adv7280a_dev *dev, uint8_t cti_en, uint8_t cti_ab, uint8_t cti_c_th, uint8_t dnr_en, uint8_t dnr1_th, uint8_t dnr2_th) {
+    adv7280a_writereg(dev, 0x4d, (0xc2|(dnr_en<<5)|(cti_ab<<2)|cti_en));
     adv7280a_writereg(dev, 0x4e, cti_c_th);
+    adv7280a_writereg(dev, 0x50, dnr1_th);
+    adv7280a_writereg(dev, 0xfc, dnr2_th);
 }
 
 void adv7280a_set_ifcomp(adv7280a_dev *dev, uint8_t if_comp) {
@@ -197,16 +220,22 @@ void adv7280a_update_config(adv7280a_dev *dev, adv7280a_config *cfg) {
     if (dev->powered_on) {
         if (cfg->ntsc_pedestal != dev->cfg.ntsc_pedestal)
             adv7280a_set_pedestal(dev, cfg->ntsc_pedestal);
+        if ((cfg->y_gain_mode != dev->cfg.y_gain_mode) ||
+            (cfg->y_gain != dev->cfg.y_gain) ||
+            (cfg->c_gain_mode != dev->cfg.c_gain_mode) ||
+            (cfg->c_gain != dev->cfg.c_gain))
+            adv7280a_set_gains(dev, cfg->y_gain_mode, cfg->y_gain, cfg->c_gain_mode, cfg->c_gain);
         if ((cfg->brightness != dev->cfg.brightness) ||
             (cfg->contrast != dev->cfg.contrast) ||
             (cfg->hue != dev->cfg.hue))
             adv7280a_set_levels(dev, cfg->brightness, cfg->contrast, cfg->hue);
-        if ((cfg->sh_filt_y != dev->cfg.sh_filt_y) || (cfg->sh_filt_c != dev->cfg.sh_filt_c))
-            adv7280a_set_shfilt(dev, cfg->sh_filt_y, cfg->sh_filt_c);
+        if ((cfg->sh_filt_y != dev->cfg.sh_filt_y) || (cfg->sh_filt_y2 != dev->cfg.sh_filt_y2) || (cfg->sh_filt_c != dev->cfg.sh_filt_c))
+            adv7280a_set_shfilt(dev, cfg->sh_filt_y, cfg->sh_filt_y2, cfg->sh_filt_c);
         if (memcmp(&cfg->comb_str_pal, &dev->cfg.comb_str_pal, 8*sizeof(uint8_t)))
             adv7280a_set_combfilt(dev, cfg);
-        if ((cfg->cti_ab != dev->cfg.cti_ab) || (cfg->cti_c_th != dev->cfg.cti_c_th))
-            adv7280a_set_cti(dev, cfg->cti_ab, cfg->cti_c_th);
+        if ((cfg->cti_en != dev->cfg.cti_en) || (cfg->cti_ab != dev->cfg.cti_ab) || (cfg->cti_c_th != dev->cfg.cti_c_th) ||
+            (cfg->dnr_en != dev->cfg.dnr_en) || (cfg->dnr1_th != dev->cfg.dnr1_th) || (cfg->dnr2_th != dev->cfg.dnr2_th))
+            adv7280a_set_cti_dnr(dev, cfg->cti_en, cfg->cti_ab, cfg->cti_c_th, cfg->dnr_en, cfg->dnr1_th, cfg->dnr2_th);
         if (cfg->if_comp != dev->cfg.if_comp)
             adv7280a_set_ifcomp(dev, cfg->if_comp);
 

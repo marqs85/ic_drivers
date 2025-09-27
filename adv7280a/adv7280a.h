@@ -55,6 +55,7 @@ typedef struct {
     uint8_t contrast;
     uint8_t hue; // processed as signed
     uint8_t sh_filt_y;
+    uint8_t sh_filt_y2;
     uint8_t sh_filt_c;
     uint8_t comb_str_pal;
     uint8_t comb_str_ntsc;
@@ -64,8 +65,16 @@ typedef struct {
     uint8_t comb_cmode_ntsc;
     uint8_t comb_ymode_pal;
     uint8_t comb_ymode_ntsc;
+    uint8_t cti_en;
     uint8_t cti_ab;
     uint8_t cti_c_th;
+    uint8_t dnr_en;
+    uint8_t dnr1_th;
+    uint8_t dnr2_th;
+    uint8_t y_gain_mode;
+    uint8_t y_gain;
+    uint8_t c_gain_mode;
+    uint8_t c_gain;
     uint8_t if_comp;
 } adv7280a_config;
 
@@ -88,11 +97,13 @@ void adv7280a_select_input(adv7280a_dev *dev, adv7280a_input input);
 
 void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal);
 
+void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint8_t y_gain, uint8_t c_gain_mode, uint8_t c_gain);
+
 void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast, uint8_t hue);
 
-void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_c);
+void adv7280a_set_shfilt(adv7280a_dev *dev, uint8_t sh_filt_y, uint8_t sh_filt_y2, uint8_t sh_filt_c);
 
-void adv7280a_set_cti(adv7280a_dev *dev, uint8_t cti_ab, uint8_t cti_c_th);
+void adv7280a_set_cti_dnr(adv7280a_dev *dev, uint8_t cti_en, uint8_t cti_ab, uint8_t cti_c_th, uint8_t dnr_en, uint8_t dnr1_th, uint8_t dnr2_th);
 
 void adv7280a_set_ifcomp(adv7280a_dev *dev, uint8_t if_comp);
 
