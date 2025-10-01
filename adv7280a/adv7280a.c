@@ -40,8 +40,10 @@ const adv7280a_config adv7280a_cfg_default = {
     .dnr_en = 1,
     .dnr1_th = 8,
     .dnr2_th = 0,
-    .y_gain = 128,
-    .c_gain = 128,
+    .y_gain_mode = 2,
+    .c_gain_mode = 2,
+    .y_gain = 32768,
+    .c_gain = 32768,
 };
 
 void adv7280a_writereg(adv7280a_dev *dev, uint8_t regaddr, uint8_t data) {
@@ -135,12 +137,12 @@ void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal) {
     adv7280a_writereg(dev, ADV7280A_VIDSEL2, (ntsc_pedestal<<4)|0x4);
 }
 
-void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint8_t y_gain, uint8_t c_gain_mode, uint8_t c_gain) {
+void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint16_t y_gain, uint8_t c_gain_mode, uint16_t c_gain) {
     // luma gain reference = 1024/0.68 = 0x5e2
     const uint16_t y_gain_ref = 0x5e2;
     const uint16_t c_gain_ref = 0x400;
-    uint16_t y_gain_reg = y_gain_ref + 2*(int8_t)(y_gain-128);
-    uint16_t c_gain_reg = c_gain_ref + 2*(int8_t)(c_gain-128);
+    uint16_t y_gain_reg = y_gain_ref + 2*(int16_t)(y_gain-32768);
+    uint16_t c_gain_reg = c_gain_ref + 2*(int16_t)(c_gain-32768);
 
     adv7280a_writereg(dev, 0x2c, ((1<<7) | (y_gain_mode << 4) | (3<<2) | c_gain_mode));
     adv7280a_writereg(dev, 0x2d, (0xf0 | (c_gain_reg >> 8)));

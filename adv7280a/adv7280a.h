@@ -71,11 +71,11 @@ typedef struct {
     uint8_t dnr_en;
     uint8_t dnr1_th;
     uint8_t dnr2_th;
-    uint8_t y_gain_mode;
-    uint8_t y_gain;
-    uint8_t c_gain_mode;
-    uint8_t c_gain;
     uint8_t if_comp;
+    uint8_t y_gain_mode;
+    uint8_t c_gain_mode;
+    uint16_t y_gain;
+    uint16_t c_gain;
 } adv7280a_config;
 
 typedef struct {
@@ -97,7 +97,7 @@ void adv7280a_select_input(adv7280a_dev *dev, adv7280a_input input);
 
 void adv7280a_set_pedestal(adv7280a_dev *dev, uint8_t ntsc_pedestal);
 
-void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint8_t y_gain, uint8_t c_gain_mode, uint8_t c_gain);
+void adv7280a_set_gains(adv7280a_dev *dev, uint8_t y_gain_mode, uint16_t y_gain, uint8_t c_gain_mode, uint16_t c_gain);
 
 void adv7280a_set_levels(adv7280a_dev *dev, uint8_t brightness, uint8_t contrast, uint8_t hue);
 
