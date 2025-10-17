@@ -175,8 +175,8 @@ void adv7280a_set_ifcomp(adv7280a_dev *dev, uint8_t if_comp) {
 
 void adv7280a_set_combfilt(adv7280a_dev *dev, adv7280a_config *cfg) {
     adv7280a_writereg(dev, 0x19, 0xf0 | (cfg->comb_str_ntsc<<2) | cfg->comb_str_pal);
-    adv7280a_writereg(dev, 0x38, ((cfg->comb_ctaps_ntsc+1)<<6) | (((!!cfg->comb_cmode_ntsc<<2) | cfg->comb_cmode_ntsc)<<3) | ((!!cfg->comb_ymode_ntsc<<2) | cfg->comb_ymode_ntsc));
-    adv7280a_writereg(dev, 0x39, ((cfg->comb_ctaps_pal+1)<<6) | (((!!cfg->comb_cmode_pal<<2) | cfg->comb_cmode_pal)<<3) | ((!!cfg->comb_ymode_pal<<2) | cfg->comb_ymode_pal));
+    adv7280a_writereg(dev, 0x38, (((cfg->comb_ctaps_ntsc+1)<<6) | ((cfg->comb_cmode_ntsc ? (3+cfg->comb_cmode_ntsc) : 0)<<3) | (cfg->comb_ymode_ntsc ? (3+cfg->comb_ymode_ntsc) : 0)));
+    adv7280a_writereg(dev, 0x39, (((cfg->comb_ctaps_pal+1)<<6)  | ((cfg->comb_cmode_pal  ? (3+cfg->comb_cmode_pal)  : 0)<<3) | (cfg->comb_ymode_pal  ? (3+cfg->comb_ymode_pal)  : 0)));
 }
 
 int adv7280a_check_activity(adv7280a_dev *dev) {
