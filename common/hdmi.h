@@ -20,6 +20,9 @@
 #ifndef HDMI_H_
 #define HDMI_H_
 
+#define EDID_EDDC_BASE              (0xA0>>1)
+#define EDID_SEG_PTR_BASE           (0x60>>1)
+
 #define EDID_MAX_EXTBLOCKS          3
 #define EDID_MAX_SIZE               (128*(EDID_MAX_EXTBLOCKS+1))
 

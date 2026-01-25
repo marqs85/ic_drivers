@@ -49,6 +49,19 @@ uint8_t sii1136_readreg(sii1136_dev *dev, uint8_t regaddr)
     return I2C_read(dev->i2cm_base,1);
 }
 
+void sii1136_read_eddc_edid(sii1136_dev *dev, unsigned char *buf, unsigned len) {
+    int i;
+
+    //Phase 1
+    I2C_start(dev->i2cm_base, EDID_EDDC_BASE, 0);
+    I2C_write(dev->i2cm_base, 0x00, 0);
+
+    //Phase 2
+    I2C_start(dev->i2cm_base, EDID_EDDC_BASE, 1);
+    for (i=0; i<len; i++)
+        buf[i] = I2C_read(dev->i2cm_base, (i==len-1) ? 1 : 0);
+}
+
 void sii1136_get_default_cfg(sii1136_config *cfg) {
     memcpy(cfg, &sii1136_cfg_default, sizeof(sii1136_config));
 }
@@ -399,4 +412,44 @@ void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg) {
 
         memcpy(&dev->cfg, cfg, sizeof(sii1136_config));
     }
+}
+
+int sii1136_get_edid(sii1136_dev *dev, edid_t *edid) {
+    int bytes_to_read, tot_bytes_read, edid_valid=0, ret=0, seg_idx=1;
+    uint8_t regval;
+    uint8_t edid_hdr[] = {0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00};
+
+    regval = sii1136_readreg(dev, SII1136_SYSCTRL);
+
+    sii1136_writereg(dev, SII1136_SYSCTRL, regval | (3<<1));
+
+    sii1136_read_eddc_edid(dev, edid->data, 256);
+
+    if (!memcmp(edid->data, edid_hdr, sizeof(edid_hdr))) {
+        edid_valid = 1;
+        edid->len = (1+edid->data[126])*128;
+        tot_bytes_read = 256;
+    }
+
+    if (!edid_valid) {
+        ret = -1;
+    } else if (edid->len > EDID_MAX_SIZE) {
+        ret = -2;
+    } else {
+        while (tot_bytes_read < edid->len) {
+            I2C_start(dev->i2cm_base, EDID_SEG_PTR_BASE, 0);
+            I2C_write(dev->i2cm_base, seg_idx, 1);
+
+            bytes_to_read = ((edid->len - tot_bytes_read) > 256) ? 256 : (edid->len - tot_bytes_read);
+
+            sii1136_read_eddc_edid(dev, &edid->data[tot_bytes_read], bytes_to_read);
+            tot_bytes_read += bytes_to_read;
+            seg_idx++;
+        }
+    }
+
+    sii1136_writereg(dev, SII1136_SYSCTRL, regval);
+    sii1136_readreg(dev, SII1136_SYSCTRL);
+
+    return ret;
 }

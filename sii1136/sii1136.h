@@ -65,4 +65,6 @@ void sii1136_init_mode(sii1136_dev *dev, uint8_t pixelrep, uint8_t pixelrep_info
 
 void sii1136_update_config(sii1136_dev *dev, sii1136_config *cfg);
 
+int sii1136_get_edid(sii1136_dev *dev, edid_t *edid);
+
 #endif /* SII1136_H_ */
