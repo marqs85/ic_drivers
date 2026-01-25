@@ -26,7 +26,7 @@
 #define SDP_PCNT_TOLERANCE 50
 
 const adv7280a_config adv7280a_cfg_default = {
-    .brightness = 128-32,
+    .brightness = 128,
     .contrast = 128,
     .hue = 128,
     .sh_filt_y = 1,
