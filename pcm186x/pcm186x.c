@@ -58,6 +58,28 @@ void pcm186x_source_sel(pcm186x_dev *dev, pcm_input_t input) {
     pcm186x_writereg(dev, PCM186X_ADC1R, (1<<6)|adc_ch);
 }
 
+void pcm186x_set_stereo_mode(pcm186x_dev *dev, int mono_enable) {
+    uint32_t gain;
+    int i;
+    const uint8_t chregs[] = {0, 1, 6, 7};
+    uint32_t stereo_cfg[] = {0x100000, 0x0, 0x0, 0x100000};
+    uint32_t mono_cfg[] = {0x0804DC, 0x0804DC, 0x0804DC, 0x0804DC};
+    uint32_t *ch_cfg = mono_enable ? mono_cfg : stereo_cfg;
+
+    pcm186x_writereg(dev, PCM186X_PAGESEL, 1);
+
+    for (i=0; i<sizeof(chregs); i++) {
+        pcm186x_writereg(dev, PCM186X_DSP2_ADDR, chregs[i]);
+        pcm186x_writereg(dev, PCM186X_DSP2_WDATA0, (ch_cfg[i] >> 16) & 0xff);
+        pcm186x_writereg(dev, PCM186X_DSP2_WDATA1, (ch_cfg[i] >> 8) & 0xff);
+        pcm186x_writereg(dev, PCM186X_DSP2_WDATA2, ch_cfg[i] & 0xff);
+        pcm186x_writereg(dev, PCM186X_DSP2_CFG, (1<<0));
+        while ((pcm186x_readreg(dev, PCM186X_DSP2_CFG) & ((1<<0)|(1<<2))) != 0) {}
+    }
+
+    pcm186x_writereg(dev, PCM186X_PAGESEL, 0);
+}
+
 void pcm186x_set_gain(pcm186x_dev *dev, int8_t db_gain) {
     int8_t gain_val = 2*db_gain;
 
@@ -143,6 +165,8 @@ void pcm186x_update_config(pcm186x_dev *dev, pcm186x_config *cfg) {
         pcm186x_set_samplerate(dev, cfg->fs);
     if (cfg->gain != dev->cfg.gain)
         pcm186x_set_gain(dev, cfg->gain-PCM_GAIN_0DB);
+    if (cfg->mono != dev->cfg.mono)
+        pcm186x_set_stereo_mode(dev, cfg->mono);
 
     memcpy(&dev->cfg, cfg, sizeof(pcm186x_config));
 }

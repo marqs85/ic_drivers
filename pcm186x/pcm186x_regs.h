@@ -62,4 +62,16 @@
 #define PCM186X_PWR_CTRL        0x70
 #define PCM186X_DSP_CTRL        0x71
 
+
+/* Page 1 registers */
+
+#define PCM186X_DSP2_CFG        0x01
+#define PCM186X_DSP2_ADDR       0x02
+#define PCM186X_DSP2_WDATA0     0x04
+#define PCM186X_DSP2_WDATA1     0x05
+#define PCM186X_DSP2_WDATA2     0x06
+#define PCM186X_DSP2_RDATA0     0x08
+#define PCM186X_DSP2_RDATA1     0x09
+#define PCM186X_DSP2_RDATA2     0x0A
+
 #endif /* PCM186X_REGS_H_ */

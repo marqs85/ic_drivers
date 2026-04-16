@@ -45,6 +45,7 @@ typedef enum {
 typedef struct {
     pcm_samplerate_t fs;
     uint8_t gain;
+    uint8_t mono;
 } pcm186x_config;
 
 typedef struct {
@@ -54,6 +55,8 @@ typedef struct {
 } pcm186x_dev;
 
 void pcm186x_source_sel(pcm186x_dev *dev, pcm_input_t input);
+
+void pcm186x_set_stereo_mode(pcm186x_dev *dev, int mono_enable);
 
 void pcm186x_set_gain(pcm186x_dev *dev, int8_t db_gain);
 
