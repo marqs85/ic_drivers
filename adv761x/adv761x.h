@@ -83,6 +83,7 @@ typedef struct {
     uint8_t pixelderep;
     uint8_t pixelderep_ifr;
     uint8_t hdmi_mode;
+    uint8_t ar_idx;
     uint8_t powered_on;
     HDMI_audio_sample_type_t audio_sample_type;
     adv761x_config cfg;

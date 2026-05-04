@@ -278,7 +278,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     int mode_changed = 0, dv1_pr = 0, dv1_menu, i;
     adv761x_sync_status ss = {0};
     uint32_t pclk_hz;
-    uint8_t pixelderep, pixelderep_ifr, hdmi_mode;
+    uint8_t pixelderep, pixelderep_ifr, hdmi_mode, ar_idx;
     uint8_t regval;
     uint16_t de_h, de_v;
     char dv_id[3], dv_corename[16];
@@ -323,10 +323,13 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     hdmi_mode = regval >> 7;
 
     pixelderep = regval & 0xf;
-    if (hdmi_mode)
+    if (hdmi_mode) {
         pixelderep_ifr = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_AVI_INFOFRAME_DB5) & 0xf;
-    else
+        ar_idx = (adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_AVI_INFOFRAME_DB2) >> 4) & 0x3;
+    } else {
         pixelderep_ifr = 0;
+        ar_idx = 0;
+    }
 
     if (hdmi_mode && dev->cfg.enable_dv1) {
         dv_id[0] = adv761x_readreg(dev, ADV761X_INFOFRAME_MAP, ADV761X_SPD_INFOFRAME_DB1);
@@ -390,7 +393,8 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         (pclk_hz > (dev->pclk_hz + PCLK_HZ_TOLERANCE)) ||
         (pixelderep != dev->pixelderep) ||
         (pixelderep_ifr != dev->pixelderep_ifr) ||
-        (hdmi_mode != dev->hdmi_mode))
+        (hdmi_mode != dev->hdmi_mode) ||
+        (ar_idx != dev->ar_idx))
     {
         mode_changed = 1;
 
@@ -412,6 +416,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
         printf("advrx pclk: %luHz\n", pclk_hz);
         printf("advrx pixelderep: %u (IFR: %u)\n", pixelderep, pixelderep_ifr);
         printf("advrx hdmi_mode: %u%s%s\n", hdmi_mode, dv1_pr ? ", DV1: " : "", dv1_pr ? dv_corename : "");
+        printf("advrx ar_idx: %u\n", ar_idx);
     }
 
     memcpy(&dev->ss, &ss, sizeof(adv761x_sync_status));
@@ -419,6 +424,7 @@ int adv761x_get_sync_stats(adv761x_dev *dev) {
     dev->pixelderep = pixelderep;
     dev->pixelderep_ifr = pixelderep_ifr;
     dev->hdmi_mode = hdmi_mode;
+    dev->ar_idx = ar_idx;
 
     return mode_changed;
 }
