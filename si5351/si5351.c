@@ -209,8 +209,12 @@ static void si5351_configure_pll(si5351_dev *dev, si5351_pll_ch pll_ch, si5351_c
     acc_reg = si5351_readreg(dev, SI5351_PLL_SRC);
     acc_reg &= ~(1<<(2+pll_ch));
     acc_reg |= (clksrc<<(2+pll_ch));
-    acc_reg &= ~(3<<6);
-    acc_reg |= (clkin_div_regval<<6);
+
+    if (clksrc == SI_CLKIN) {
+        acc_reg &= ~(3<<6);
+        acc_reg |= (clkin_div_regval<<6);
+    }
+
     si5351_writereg(dev, SI5351_PLL_SRC, acc_reg);
 }
 
