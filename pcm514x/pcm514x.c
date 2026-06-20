@@ -65,16 +65,16 @@ int pcm514x_init(pcm514x_dev *dev)
     pcm514x_writereg(dev, PCM514X_PLL_SRCSEL, 0x10);
     pcm514x_writereg(dev, PCM514X_DAC_SRCSEL, 0x10);
 
-    // Set manual clock mode and ignore SCK detection
-    pcm514x_writereg(dev, PCM514X_CLK_MON, 0x0a);
+    // Set auto clock mode and ignore SCK detection
+    pcm514x_writereg(dev, PCM514X_CLK_MON, 0x08);
 
-    // Set dividers
+    // Set dividers for 48kHz source (ignored in auto clock mode)
     pcm514x_writereg(dev, PCM514X_DSP_DIV, 1);
     pcm514x_writereg(dev, PCM514X_DAC_DIV, 15);
     pcm514x_writereg(dev, PCM514X_NCP_DIV, 3);
     pcm514x_writereg(dev, PCM514X_OSR_DIV, 7);
 
-    // Configure PLL for 98.30MHz PLL output
+    // Configure PLL for 98.30MHz PLL output for 48kHz source (ignored in auto clock mode)
     pcm514x_writereg(dev, PCM514X_PLL_ENABLE, 0x00);
     pcm514x_writereg(dev, PCM514X_PLL_P, 0);
     pcm514x_writereg(dev, PCM514X_PLL_R, 1);
